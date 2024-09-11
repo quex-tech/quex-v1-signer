@@ -1,0 +1,1 @@
+RATE_LIMITS = ['20/second', '100/minute', '1000/hour']

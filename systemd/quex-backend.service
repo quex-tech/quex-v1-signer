@@ -1,0 +1,12 @@
+[Unit]
+Description=Some sort of data signer
+After=network.target
+
+[Service]
+User=USER
+WorkingDirectory=WORKING_DIR
+ExecStart=PATH_TO_VENV/bin/waitress-serve --port 8000 --call 'quex_backend:create_app'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
