@@ -42,6 +42,7 @@ DEBUG=1
 ```
 
 ## Run server
+From virtual environment
 ```sh
 ./start.sh
 ```
