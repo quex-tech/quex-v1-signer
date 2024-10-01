@@ -1,2 +1,2 @@
 #!/bin/sh
-waitress-serve --call 'quex_backend:create_app' --port 8000
+waitress-serve --host 127.0.0.1 --port 8000 --call 'quex_backend:create_app'

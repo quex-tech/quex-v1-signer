@@ -1,11 +1,10 @@
 from flask import Blueprint, jsonify, request
-from quex_backend import account, cmc_api_key
+from quex_backend import account, cmc_api_key, get_quote
 from quex_backend.models import DataItem, FeedResponse, b64dict
 from quex_backend.td_quote import TDQuote
 from quex_backend.cmc_utils import *
 import requests
 import time
-import pyquex_tdx
 
 cmc_headers = {
     'Accepts': 'application/json',
@@ -16,10 +15,8 @@ bp = Blueprint('v1', __name__)
 
 @bp.route('/quote')
 def quote():
-#    with open("quote3.dat", 'rb') as f:
-#        quote_bin = f.read()
     addr = bytes.fromhex(account.address[2:])
-    quote_bin = pyquex_tdx.get_quote(addr.rjust(32,b'\x00'))
+    quote_bin = get_quote(addr.rjust(32,b'\x00'))
     quote = TDQuote.deserialize(quote_bin)
     return b64dict(quote)
 

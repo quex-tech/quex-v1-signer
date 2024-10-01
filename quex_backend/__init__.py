@@ -11,6 +11,15 @@ import tomllib
 from eth_account import Account
 
 dotenv.load_dotenv()
+
+if os.environ.get("DEBUG"):
+    def get_quote(report_data):
+        with open("quote.dat", 'rb') as f:
+            quote_bin = f.read()
+        return quote_bin
+else:
+    from pyquex_tdx import get_quote
+
 account = Account.from_key(os.environ.get("ETH_SIGNER_KEY"))
 cmc_api_key = os.environ.get("COINMARKETCAP_API_KEY")
 
