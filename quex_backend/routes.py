@@ -7,6 +7,7 @@ from quex_backend.td_quote import TDQuote
 from quex_backend.cmc_utils import *
 from quex_backend.utils import *
 import requests
+import json
 
 cmc_headers = {
     'Accepts': 'application/json',
@@ -31,9 +32,10 @@ def test():
     params: Mapping[str, str] = {'id': ','.join([str(x) for x in cmc_ids])}
     headers: Mapping[str, str] = cmc_headers
     r = requests.request(method, url, params=params, headers=headers)
+    print("!!! " + r.text)
     d = r.json()
     jq = ""
-    print("???" + str(d))
+    print("???" + json.dumps(d) )
     feed_id = get_feed_id(url, params, jq)
 
     int_data = 1

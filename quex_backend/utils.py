@@ -3,6 +3,7 @@ from eth_utils import keccak
 
 import ntplib
 import eth_abi
+import jq
 
 c = ntplib.NTPClient()
 
@@ -25,3 +26,7 @@ def get_feed_id(url: str, params: Mapping[str, str], jq: str) -> bytes:
     msg_str = url + params_str + jq
     msg = eth_abi.encode(["bytes"], [msg_str.encode()])
     return keccak(msg)
+
+# TODO allow only whitelisted operations
+def process_json(input: str, json_query: str) -> str:
+    return jq.compile(json_query).input_value(input).first()

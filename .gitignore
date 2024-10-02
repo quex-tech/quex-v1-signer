@@ -1,4 +1,5 @@
 venv
 quote.dat
 .env
-quex_backend/__pycache__/
+__pycache__/
+.idea
