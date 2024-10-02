@@ -7,7 +7,6 @@ from quex_backend.td_quote import TDQuote
 from quex_backend.cmc_utils import *
 from quex_backend.utils import *
 import requests
-import time
 
 cmc_headers = {
     'Accepts': 'application/json',
