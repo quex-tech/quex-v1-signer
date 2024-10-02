@@ -15,10 +15,11 @@ cmc_headers = {
 
 bp = Blueprint('v1', __name__)
 
+
 @bp.route('/quote')
 def quote():
     addr = bytes.fromhex(account.address[2:])
-    quote_bin = get_quote(addr.rjust(32,b'\x00'))
+    quote_bin = get_quote(addr.rjust(32, b'\x00'))
     quote = TDQuote.deserialize(quote_bin)
     return b64dict(quote)
 
@@ -27,24 +28,22 @@ def quote():
 def test():
     url = cmc_url
     method = "get"
-    params={'id': ','.join([str(x) for x in cmc_ids])}
-    headers: Mapping[str, str | bytes] = cmc_headers
-    r = requests.request(method, url, params = params, headers = headers)
+    params: Mapping[str, str] = {'id': ','.join([str(x) for x in cmc_ids])}
+    headers: Mapping[str, str] = cmc_headers
+    r = requests.request(method, url, params=params, headers=headers)
     d = r.json()
+    jq = ""
     print("???" + str(d))
-    feed_id = "???".encode()
+    feed_id = get_feed_id(url, params, jq)
 
     int_data = 1
     di = IntDataItem(
-            timestamp=get_timestamp(),
-            value=int_data,
-            feed_id=feed_id
-            )
+        timestamp=get_timestamp(),
+        value=int_data,
+        feed_id=feed_id
+    )
     sign = di.sign_with_account(account)
     return b64dict(FeedResponse(data=di, signature=sign))
-
-
-
 
 # @bp.route('/price')
 # def get_price():
