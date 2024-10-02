@@ -18,7 +18,7 @@ class ETHSignature:
                 )
 
 @dataclass
-class DataItem:
+class IntDataItem:
     timestamp: int
     value: int
     feed_id: bytes
@@ -30,7 +30,7 @@ class DataItem:
 
 @dataclass
 class FeedResponse:
-    data: DataItem
+    data: IntDataItem
     signature: ETHSignature
 
 def b64dict(obj):
