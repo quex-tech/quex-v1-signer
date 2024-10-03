@@ -46,3 +46,32 @@ From virtual environment
 ```sh
 ./start.sh
 ```
+
+## Usage
+
+Get latest BTC price from CMC (encoded in parameter `url=https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest&id=1,1027`), multiply the result by 1000000, round value to integer (encoded in parameter `jq=(.data["1"].quote.USD.price * 1000000) | round`):
+```sh
+curl "http://127.0.0.1:8000/data/int?url=https%3A%2F%2Fpro-api.coinmarketcap.com%2Fv2%2Fcryptocurrency%2Fquotes%2Flatest%3Fid%3D1%2C1027&jq=%28.data%5B%221%22%5D.quote.USD.price%20%2A%201000000%29%20%7C%20round"
+```
+
+
+Response example:
+
+```json
+{
+  "data": {
+    "feed_id": "LixbN2d52D20+gqRGy9PNpJ07vqny9oZy7vsJhhyBpE=",
+    "timestamp": 1727931770,
+    "value": 61310780113
+  },
+  "signature": {
+    "r": "8mVGoCqi4rclOsbJ2qq2kqkeJfeE7i94iE7MtSg2RXE=",
+    "s": "ZvmTU2zstu27tiXD2/nnX3Lzs2cwnp5NU1NFo4kakxc=",
+    "v": 27
+  }
+}
+```
+
+
+Get request with url:https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest&id=1,1027 and jq:(.data["1"].quote.USD.price * 1000000) | round
+

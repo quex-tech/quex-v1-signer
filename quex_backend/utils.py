@@ -18,14 +18,15 @@ def get_timestamp() -> int:
 
 # Create feed id from params
 # TODO include headers here?
-def get_feed_id(url: str, params: Mapping[str, str], jq: str) -> bytes:
+def compute_feed_id(method: str, url: str, jq: str, params: Mapping[str, str] = {}) -> bytes:
     params_str = ''
     for key in sorted(params):
         params_str = params_str + key + params[key]
 
-    msg_str = url + params_str + jq
+    msg_str = method + url + params_str + jq
     msg = eth_abi.encode(["bytes"], [msg_str.encode()])
     return keccak(msg)
+
 
 # TODO allow only whitelisted operations
 def process_json(input: str, json_query: str) -> str:

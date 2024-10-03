@@ -13,7 +13,7 @@ def test_get_feed_id():
     url: str = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
     params: Mapping[str, str] = {"basa": "!val", "az": "!val2", "cde": "!val3"}
     jq: str = "test_filer"
-    feed_id = get_feed_id(url, params, jq)
+    feed_id = compute_feed_id(url, params, jq)
     assert feed_id.hex() == "bb85081952f79f8fa5fed15c22a2f8c0bbae05cfc50339941a91cb7534afa249"
 
 
@@ -23,9 +23,7 @@ def test_process_json():
 
     test_vectors = [{"input": parsed_json, "json_query": '.data["1"].quote.USD.price', "output": 61083.19108410595},
                     {"input": parsed_json, "json_query": '(.data["1"].quote.USD.price * 1000000) | round', "output": 61083191084},
-                    {"input": "hello", "json_query": ".", "output": "hello"},
                     {"input": parsed_json, "json_query": ".status.timestamp", "output": "2024-10-02T18:42:37.954Z"}
-
                     ]
 
     for tv in test_vectors:

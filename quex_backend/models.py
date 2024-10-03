@@ -28,7 +28,7 @@ class IntDataItem:
         msghash = encode_defunct(keccak(msg))
         return ETHSignature.fromETH(account.sign_message(msghash))
 
-
+# TODO: handle errors?
 @dataclass
 class FeedResponse:
     data: IntDataItem
