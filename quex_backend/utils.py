@@ -16,14 +16,9 @@ def get_timestamp() -> int:
     return round(response.tx_time)
 
 
-# Create feed id from params
-# TODO include headers here?
-def compute_feed_id(method: str, url: str, jq: str, params: Mapping[str, str] = {}) -> bytes:
-    params_str = ''
-    for key in sorted(params):
-        params_str = params_str + key + params[key]
-
-    msg_str = method + url + params_str + jq
+# Create feed id from request parameters
+def compute_feed_id(data: Mapping[str, str]) -> bytes:
+    msg_str = str(data)
     msg = eth_abi.encode(["bytes"], [msg_str.encode()])
     return keccak(msg)
 

@@ -22,28 +22,41 @@ def quote():
     return b64dict(quote)
 
 
-@bp.route('/data/int')
+@bp.route('/data/int', methods=['POST'])
 def int_data_point():
-    method = "get"
-    url = request.args.get('url')
-    jq = request.args.get('jq')
+    data = request.get_json()
+    print("\n Got request with data:" + str(data))
 
-    print("\n Got request with url:" + url + " and jq:" + jq)
-
+    method = data['method']
+    url = data['url']
+    params = data['params']
     # TODO extract headers from env
     headers: Mapping[str, str] = cmc_headers
 
-    r = requests.request(method, url, headers=headers)
+    r = requests.request(method, url, params=params, headers=headers)
     d = r.json()
     print("\nGot response:" + json.dumps(d))
 
+    jq = data['jq']
     int_data = int(process_json(d, jq))
     print("Computed result: " + str(int_data))
 
     di = IntDataItem(
         timestamp=get_timestamp(),
         value=int_data,
-        feed_id=compute_feed_id(method, url, jq)
+        feed_id=compute_feed_id(data)
     )
     sign = di.sign_with_account(account)
     return b64dict(FeedResponse(data=di, signature=sign))
+
+
+@bp.route('/test')
+def test():
+    url = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
+    method = "get"
+    params: Mapping[str, str] = {'id': '1'}
+    headers: Mapping[str, str] = cmc_headers
+
+    r = requests.request(method, url, params=params, headers=headers)
+    print("!!! " + r.text)
+    return ""
