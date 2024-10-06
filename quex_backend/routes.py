@@ -24,20 +24,41 @@ def quote():
 
 @bp.route('/data/int', methods=['POST'])
 def int_data_point():
+    """Get json with the HTTPS request parameters and return processed and signed result
+
+        Json parameters:
+        method : str
+            method for the Request: ``GET``, ``OPTIONS``, ``HEAD``, ``POST``, ``PUT``, ``PATCH``, or ``DELETE``.
+        url: str
+            URL you're willing to certify
+        params: str
+            Dictionary, list of tuples or bytes to send in the query string for the
+        jq: str
+            JQ program to be executed on top of the response json
+
+        Raises
+        ------
+        NotImplementedError
+            If no sound is set for the animal or passed in as a
+            parameter.
+
+        TODO catch errors and handle them in response
+        TODO extract headers from env
+
+        """
     data = request.get_json()
     print("\n Got request with data:" + str(data))
 
     method = data['method']
     url = data['url']
     params = data['params']
-    # TODO extract headers from env
+    jq = data['jq']
     headers: Mapping[str, str] = cmc_headers
 
     r = requests.request(method, url, params=params, headers=headers)
     d = r.json()
     print("\nGot response:" + json.dumps(d))
 
-    jq = data['jq']
     int_data = int(process_json(d, jq))
     print("Computed result: " + str(int_data))
 
