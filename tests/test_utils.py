@@ -10,11 +10,37 @@ def test_get_timestamp():
 
 
 def test_get_feed_id():
-    url: str = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
-    params: Mapping[str, str] = {"basa": "!val", "az": "!val2", "cde": "!val3"}
-    jq: str = "test_filer"
-    feed_id = compute_feed_id(url, params, jq)
-    assert feed_id.hex() == "bb85081952f79f8fa5fed15c22a2f8c0bbae05cfc50339941a91cb7534afa249"
+    # test vector
+    data1 = {
+        "method": "get",
+        "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest",
+        "params": {"id": "1", "a": "2", "c": "3"},
+        "jq": "(.data[\"1\"].quote.USD.price * 1000000) | round"
+    }
+    feed_id = compute_feed_id(data1)
+    assert feed_id.hex() == "0163cbb54974117a2b078de281150281905e942f98ae973aaf24774ae383902c"
+
+    # test that feed id do not depend on params order
+    data2 = {
+        "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest",
+        "params": {"id": "1", "a": "2", "c": "3"},
+        "method": "get",
+        "jq": "(.data[\"1\"].quote.USD.price * 1000000) | round"
+    }
+    assert feed_id.hex() == compute_feed_id(data2).hex()
+
+    # test that feed id do not depend on params additional order
+    data3 = {
+        "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest",
+        "params": {"id": "1", "a": "2", "c": "3"},
+        "jq": "(.data[\"1\"].quote.USD.price * 1000000) | round"
+    }
+    data3["method"] = "get"
+    assert feed_id.hex() == compute_feed_id(data3).hex()
+
+    # test that feed id change if we change a parameter
+    data3["method"] = "post"
+    assert compute_feed_id(data3).hex() == "04011bb0604e6900b50895da27458bd51c70bebee98f74cbdcfaeb0765db6b8a"
 
 
 def test_process_json():
@@ -22,7 +48,8 @@ def test_process_json():
     parsed_json = json.loads(cmc_example_response)
 
     test_vectors = [{"input": parsed_json, "json_query": '.data["1"].quote.USD.price', "output": 61083.19108410595},
-                    {"input": parsed_json, "json_query": '(.data["1"].quote.USD.price * 1000000) | round', "output": 61083191084},
+                    {"input": parsed_json, "json_query": '(.data["1"].quote.USD.price * 1000000) | round',
+                     "output": 61083191084},
                     {"input": parsed_json, "json_query": ".status.timestamp", "output": "2024-10-02T18:42:37.954Z"}
                     ]
 

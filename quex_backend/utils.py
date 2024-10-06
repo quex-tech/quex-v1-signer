@@ -1,6 +1,7 @@
 from typing import Mapping
 from eth_utils import keccak
 from quex_backend import cmc_api_key
+import json
 
 import ntplib
 import jq
@@ -28,7 +29,7 @@ def compute_feed_id(data: Mapping[str, str]) -> bytes:
     :param data: dictionary with the request params
     :return: hash from encoded data
     """
-    msg_bytes = str(data).encode()
+    msg_bytes = json.dumps(data, sort_keys=True).encode()
     return keccak(msg_bytes)
 
 
