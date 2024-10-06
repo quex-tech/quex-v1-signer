@@ -16,12 +16,23 @@ def get_timestamp() -> int:
     return round(response.tx_time)
 
 
-# Create feed id from request parameters
 def compute_feed_id(data: Mapping[str, str]) -> bytes:
+    """
+    Create feed id from request parameters
+
+    :param data: dictionary with the request params
+    :return: hash from encoded data
+    """
     msg_bytes = str(data).encode()
     return keccak(msg_bytes)
 
 
-# TODO allow only whitelisted operations
 def process_json(input: str, json_query: str) -> str:
+    """
+    Execute JQ program over the input data
+
+    :param input:
+    :param json_query:
+    :return:
+    """
     return jq.compile(json_query).input_value(input).first()

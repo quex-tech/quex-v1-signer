@@ -31,10 +31,12 @@ def int_data_point():
             method for the Request: ``GET``, ``OPTIONS``, ``HEAD``, ``POST``, ``PUT``, ``PATCH``, or ``DELETE``.
         url: str
             URL you're willing to certify
+            Note: we assume here, that URL is coming from trusted source, e.g. it was already filtered outside of this program
         params: str
             Dictionary, list of tuples or bytes to send in the query string for the
         jq: str
             JQ program to be executed on top of the response json
+            Note: we assume here, that jq query is coming from trusted source, e.g. it was already filtered outside of this program
 
         Raises
         ------
@@ -69,15 +71,3 @@ def int_data_point():
     )
     sign = di.sign_with_account(account)
     return b64dict(FeedResponse(data=di, signature=sign))
-
-
-@bp.route('/test')
-def test():
-    url = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
-    method = "get"
-    params: Mapping[str, str] = {'id': '1'}
-    headers: Mapping[str, str] = cmc_headers
-
-    r = requests.request(method, url, params=params, headers=headers)
-    print("!!! " + r.text)
-    return ""
