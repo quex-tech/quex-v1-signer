@@ -1,5 +1,6 @@
 from typing import Mapping
 from eth_utils import keccak
+from quex_backend import cmc_api_key
 
 import ntplib
 import jq
@@ -40,3 +41,22 @@ def process_json(input: str, json_query: str) -> str:
     :return:
     """
     return jq.compile(json_query).input_value(input).first()
+
+
+def get_headers(url: str) -> Mapping[str, str]:
+    """
+    Get headers based on current url
+    TODO implement generic logic, allowing set up and extract headers to any web sources
+
+    :param url:
+    :return:
+    """
+    if url.startswith("https://pro-api.coinmarketcap.com"):
+        return {
+            'Accepts': 'application/json',
+            'X-CMC_PRO_API_KEY': cmc_api_key,
+        }
+    else:
+        return {
+            'X-CMC_PRO_API_KEY': cmc_api_key,
+        }

@@ -6,11 +6,6 @@ from quex_backend.utils import *
 import requests
 import json
 
-cmc_headers = {
-    'Accepts': 'application/json',
-    'X-CMC_PRO_API_KEY': cmc_api_key,
-}
-
 bp = Blueprint('v1', __name__)
 
 
@@ -39,7 +34,6 @@ def int_data_point():
             Note: we assume here, that jq query is coming from trusted source, e.g. it was already filtered outside of this program
 
         TODO catch errors and handle them in response
-        TODO extract headers from env
 
         """
     data = request.get_json()
@@ -49,7 +43,7 @@ def int_data_point():
     url = data['url']
     params = data['params']
     jq = data['jq']
-    headers: Mapping[str, str] = cmc_headers
+    headers: Mapping[str, str] = get_headers(url)
 
     r = requests.request(method, url, params=params, headers=headers)
     d = r.json()
