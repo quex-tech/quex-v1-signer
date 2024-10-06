@@ -18,9 +18,8 @@ def get_timestamp() -> int:
 
 # Create feed id from request parameters
 def compute_feed_id(data: Mapping[str, str]) -> bytes:
-    msg_str = str(data)
-    msg = eth_abi.encode(["bytes"], [msg_str.encode()])
-    return keccak(msg)
+    msg_bytes = str(data).encode()
+    return keccak(msg_bytes)
 
 
 # TODO allow only whitelisted operations
