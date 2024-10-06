@@ -2,17 +2,21 @@ from typing import Mapping
 from eth_utils import keccak
 
 import ntplib
-import eth_abi
 import jq
 
 c = ntplib.NTPClient()
 
 
-# TODO do not rely on single server
-# TODO ensure timestamp increase only
-# TODO handle errors
 def get_timestamp() -> int:
-    response = c.request('europe.pool.ntp.org', version=3)
+    """
+    Get current timestamp.
+
+    # TODO do not rely on single server
+    # TODO handle errors
+
+    :return: current NTP timestamp
+    """
+    response = c.request('europe.pool.ntp.org', version=4)
     return round(response.tx_time)
 
 
