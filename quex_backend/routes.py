@@ -33,16 +33,10 @@ def int_data_point():
             URL you're willing to certify
             Note: we assume here, that URL is coming from trusted source, e.g. it was already filtered outside of this program
         params: str
-            Dictionary, list of tuples or bytes to send in the query string for the
+            Dictionary to send in the query string
         jq: str
             JQ program to be executed on top of the response json
             Note: we assume here, that jq query is coming from trusted source, e.g. it was already filtered outside of this program
-
-        Raises
-        ------
-        NotImplementedError
-            If no sound is set for the animal or passed in as a
-            parameter.
 
         TODO catch errors and handle them in response
         TODO extract headers from env
