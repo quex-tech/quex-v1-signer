@@ -3,6 +3,7 @@ import dataclasses
 from base64 import b64encode
 from eth_utils import keccak
 from eth_account.messages import encode_defunct
+from eth_account import Account
 import eth_abi
 
 @dataclass
@@ -18,19 +19,19 @@ class ETHSignature:
                 )
 
 @dataclass
-class DataItem:
+class IntDataItem:
     timestamp: int
     value: int
     feed_id: bytes
-    def sign_with_account(self, account):
+    def sign_with_account(self, account: Account):
         msg = eth_abi.encode(["uint256", "uint256", "bytes32"], [self.value,self.timestamp,self.feed_id])
         msghash = encode_defunct(keccak(msg))
         return ETHSignature.fromETH(account.sign_message(msghash))
 
-
+# TODO: handle errors?
 @dataclass
 class FeedResponse:
-    data: DataItem
+    data: IntDataItem
     signature: ETHSignature
 
 def b64dict(obj):
