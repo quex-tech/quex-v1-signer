@@ -29,11 +29,15 @@ def compute_feed_id(data: Mapping[str, str]) -> bytes:
     :param data: dictionary with the request params
     :return: hash from encoded data
     """
-    msg_bytes = json.dumps(data, sort_keys=True).encode()
+    # TODO: make feed_id_filter key mandatory?
+    feed_id_filer = data.get("feed_id_filter", ".")
+    processed_json = process_json(data, feed_id_filer)
+    json_str = json.dumps(processed_json, sort_keys=True, indent=None)
+    msg_bytes = json_str.encode()
     return keccak(msg_bytes)
 
 
-def process_json(input: str, json_query: str) -> str:
+def process_json(input, json_query: str):
     """
     Execute JQ program over the input data
 
@@ -41,6 +45,7 @@ def process_json(input: str, json_query: str) -> str:
     :param json_query:
     :return:
     """
+
     return jq.compile(json_query).input_value(input).first()
 
 

@@ -1,5 +1,35 @@
 from quex_backend.utils import *
 import json
+import copy
+
+request_example = {
+    "request": {
+        "method": "Get",
+        "host": "pro-api.coinmarketcap.com",
+        "path": "/v2/cryptocurrency/quotes/latest",
+        "headers": [],
+        "parameters": [
+            {
+                "key": "id",
+                "value": "1"
+            }
+        ]
+    },
+    "patch": {
+        "headers": [
+            {
+                "key": "X-CMC_PRO_API_KEY",
+                "ciphertext": "encrypted_api_key_here"
+            }
+        ],
+        "parameters": None,
+        "path_suffix": None,
+        "body": None
+    },
+    "filter": "(.data[\"1\"].quote.USD.price * 1000000) | round",
+    "feed_id_filter": "del(.patch.headers[]?.ciphertext)",
+    "schema": "int256"
+}
 
 
 def test_get_timestamp():
@@ -9,7 +39,7 @@ def test_get_timestamp():
     assert ts2 >= ts
 
 
-def test_get_feed_id():
+def test_get_feed_id_parameters_order():
     # test vector
     data1 = {
         "method": "get",
@@ -43,6 +73,22 @@ def test_get_feed_id():
     assert compute_feed_id(data3).hex() == "04011bb0604e6900b50895da27458bd51c70bebee98f74cbdcfaeb0765db6b8a"
 
 
+def test_get_feed_id_feed_id_filer():
+    feed_id1 = compute_feed_id(request_example)
+    assert feed_id1.hex() == "969cfaee59967f9b9f448bb341e153ff41cf32df6f0e983da8fdd6da8d608182"
+
+    request2 = copy.deepcopy(request_example)
+    request2["patch"]["headers"] = [
+        {
+            "key": "X-CMC_PRO_API_KEY",
+            "ciphertext": "different API key here"
+        }
+    ]
+    feed_id2 = compute_feed_id(request_example)
+    assert request2 != request_example
+    assert feed_id1 == feed_id2
+
+
 def test_process_json():
     bnb_example_response = '[{"symbol":"ETHBTC","price":"0.03912000"},{"symbol":"LTCBTC","price":"0.00105700"},{"symbol":"BNBBTC","price":"0.00938000"}]'
     bnb_parsed_json = json.loads(bnb_example_response)
@@ -54,8 +100,12 @@ def test_process_json():
                     {"input": cmc_parsed_json, "json_query": '(.data["1"].quote.USD.price * 1000000) | round',
                      "output": 61083191084},
                     {"input": cmc_parsed_json, "json_query": ".status.timestamp", "output": "2024-10-02T18:42:37.954Z"},
-                    {"input": bnb_parsed_json, "json_query": ".[] | select(.symbol == \"ETHBTC\") | (.price | tonumber * 100000000 | floor)", "output": 3912000},
-                    {"input": bnb_parsed_json, "json_query": "((.[] | select(.symbol == \"ETHBTC\") | .price | tonumber) * 0.6 + (.[] | select(.symbol == \"LTCBTC\") | .price | tonumber) * 0.4) * 100000000 | floor", "output": 2389480}
+                    {"input": bnb_parsed_json,
+                     "json_query": ".[] | select(.symbol == \"ETHBTC\") | (.price | tonumber * 100000000 | floor)",
+                     "output": 3912000},
+                    {"input": bnb_parsed_json,
+                     "json_query": "((.[] | select(.symbol == \"ETHBTC\") | .price | tonumber) * 0.6 + (.[] | select(.symbol == \"LTCBTC\") | .price | tonumber) * 0.4) * 100000000 | floor",
+                     "output": 2389480}
                     ]
 
     for tv in test_vectors:
