@@ -52,7 +52,7 @@ def b64dict(obj):
                               )
 
 
-# Enum for RequestMethod, based on your specification
+# Enum for RequestMethod
 class RequestMethod(Enum):
     GET = "Get"
     POST = "Post"
