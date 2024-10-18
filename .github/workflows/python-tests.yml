@@ -1,0 +1,44 @@
+# .github/workflows/python-tests.yml
+name: Python Tests
+
+on:
+  push:
+    branches:
+      - main  # Runs tests on pushes to the "main" branch. Adjust this to your default branch name.
+  pull_request:
+    branches:
+      - main  # Runs tests on pull requests targeting the "main" branch.
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # Use Ubuntu as the runner
+
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, 3.10, 3.11]  # Test on multiple Python versions, adjust based on what you need
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3  # Checkout the repository code
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}  # Use the specified Python version
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip  # Upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi  # Install from requirements.txt if it exists
+
+    - name: Run tests
+      run: |
+        pytest  # Use pytest to run your tests
+
+    - name: Upload test results
+      if: failure()  # This step runs only if tests fail
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: ./test-results/  # Specify where to store test results
+
