@@ -4,6 +4,7 @@ from quex_backend import cmc_api_key
 from quex_backend.models import QuexRequest
 import json
 import eth_abi
+import re
 
 import ntplib
 import jq
@@ -35,17 +36,18 @@ def compute_feed_id(data: QuexRequest) -> bytes:
     return keccak(msg_bytes)
 
 
-def process_json(input: str, json_query: str, schema: str) -> bytes:
+def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
     """
-    Execute JQ program over the input data
+    Execute JQ program over the input data and encode the result according to the schema provided.
+    """
+    # Use JQ to filter the JSON input (input_json is expected to be a dictionary)
+    result = jq.compile(json_query).input(input_json).first()
 
-    :param input:
-    :param json_query:
-    :return:
-    """
-    result = jq.compile(json_query).input_value(input).first()
-    # todo complex result https://github.com/quex-tech/quex-v1-signer/issues/12
-    encoded = eth_abi.encode(schema, result)
+    print("!! 1" + str(schema) + "|" + str(result))
+
+    # Encode the result using the provided schema
+    encoded = eth_abi.encode([schema], [result])
+
     return encoded
 
 
