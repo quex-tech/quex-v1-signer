@@ -20,9 +20,14 @@ def quote():
 @bp.route('/query', methods=['POST'])
 def query():
     data = request.get_json()
-    print("\n 1 Got request with data:" + str(data))
-    quex_request = QuexRequest.parse(data)
-    print("\n 2 Got request with data:" + str(quex_request))
+    print("\n Got request with data:" + str(data))
+    qr = QuexRequest.parse(data)
+    qrr = qr.request
+    url = qrr.build_url()
+    r = requests.request(qrr.method.value, url, params=qrr.parameters, headers=qrr.headers, data=qrr.body)
+    d = r.json()
+    print("\nGot response:" + json.dumps(d))
+
     return "ok"
 
 

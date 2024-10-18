@@ -9,7 +9,7 @@ import eth_abi
 from enum import Enum
 from typing import List, Optional
 import json
-
+from urllib.parse import urljoin
 
 @dataclass
 class ETHSignature:
@@ -152,7 +152,7 @@ class HTTPRequest:
     path: str
     headers: List[RequestHeader]
     parameters: List[QueryParameter]
-    body: Optional[dict]  # JSON-decoded body, stored as a dictionary
+    body: dict  # JSON-decoded body, stored as a dictionary.
 
     @staticmethod
     def parse(data: dict):
@@ -161,7 +161,7 @@ class HTTPRequest:
         parameters = [QueryParameter.parse(p) for p in data['parameters']]
 
         # Decode the base64-encoded JSON body if it exists
-        body = None
+        body = {}
         if data.get('body'):  # Checking if 'body' exists and is not empty
             body_json = base64.b64decode(data['body']).decode('utf-8')
             body = json.loads(body_json)
@@ -174,6 +174,14 @@ class HTTPRequest:
             parameters=parameters,
             body=body  # Store the unpacked JSON as a dictionary
         )
+
+    def build_url(self) -> str:
+        # Ensure that the host starts with the correct protocol
+        protocol = "https://"
+        host = f"{protocol}{self.host}"
+
+        # Use urljoin to properly concatenate host and path
+        return urljoin(host, self.path)
 
 
 # QuexRequest structure
