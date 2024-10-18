@@ -52,6 +52,10 @@ def b64dict(obj):
                               )
 
 
+#######################################
+# Data structures for making requests #
+#######################################
+
 # Enum for RequestMethod
 class RequestMethod(Enum):
     GET = "Get"
@@ -120,21 +124,21 @@ class RequestHeaderPatch:
 # HTTPPrivatePatch structure
 @dataclass
 class HTTPPrivatePatch:
-    path_suffix: Optional[bytes]
+    path_suffix: bytes
     headers: List[RequestHeaderPatch]
-    parameters: Optional[List[QueryParameterPatch]]
-    body: Optional[bytes]
+    parameters: List[QueryParameterPatch]
+    body: bytes
     td_id: int  # Identifier to tell which TD can decrypt the patch
 
     @staticmethod
     def parse(data: dict):
-        headers = [RequestHeaderPatch.parse(h) for h in data.get('headers', [])]
-        parameters = [QueryParameterPatch.parse(p) for p in data['parameters']] if data.get('parameters') else None
+        headers = [RequestHeaderPatch.parse(h) for h in data['headers']]
+        parameters = [QueryParameterPatch.parse(p) for p in data['parameters']]
         return HTTPPrivatePatch(
-            path_suffix=base64.b64decode(data['path_suffix']) if data.get('path_suffix') else None,  # Decode base64
+            path_suffix=base64.b64decode(data['path_suffix']),  # Decode base64
             headers=headers,
             parameters=parameters,
-            body=base64.b64decode(data['body']) if data.get('body') else None,  # Decode base64
+            body=base64.b64decode(data['body']),  # Decode base64
             td_id=data['td_id']
         )
 
@@ -147,20 +151,20 @@ class HTTPRequest:
     path: str
     headers: List[RequestHeader]
     parameters: List[QueryParameter]
-    body: Optional[bytes]  # msgpack-encoded JSON
+    body: bytes  # msgpack-encoded JSON
 
     @staticmethod
     def parse(data: dict):
         method = RequestMethod.parse(data['method'])
-        headers = [RequestHeader.parse(h) for h in data.get('headers', [])]
-        parameters = [QueryParameter.parse(p) for p in data.get('parameters', [])]
+        headers = [RequestHeader.parse(h) for h in data['headers']]
+        parameters = [QueryParameter.parse(p) for p in data['parameters']]
         return HTTPRequest(
             method=method,
             host=data['host'],
             path=data['path'],
             headers=headers,
             parameters=parameters,
-            body=base64.b64decode(data['body']) if data.get('body') else None  # Decode base64
+            body=base64.b64decode(data['body'])  # Decode base64
         )
 
 
@@ -182,3 +186,4 @@ class QuexRequest:
             schema=data['schema'],
             filter=data['filter']
         )
+
