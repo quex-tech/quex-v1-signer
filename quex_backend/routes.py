@@ -26,51 +26,63 @@ def query():
     url = qrr.build_url()
     r = requests.request(qrr.method.value, url, params=qrr.parameters, headers=qrr.headers, data=qrr.body)
     d = r.json()
+
+    # Process response
     print("\nGot response:" + json.dumps(d))
-
-    return "ok"
-
-
-# todo remove
-@bp.route('/data/int', methods=['POST'])
-def int_data_point():
-    """Get json with the HTTPS request parameters and return processed and signed result
-
-        Json parameters:
-        method : str
-            method for the Request: ``GET``, ``OPTIONS``, ``HEAD``, ``POST``, ``PUT``, ``PATCH``, or ``DELETE``.
-        url: str
-            URL you're willing to certify
-            Note: we assume here, that URL is coming from trusted source, e.g. it was already filtered outside of this program
-        params: str
-            Dictionary to send in the query string
-        jq: str
-            JQ program to be executed on top of the response json
-            Note: we assume here, that jq query is coming from trusted source, e.g. it was already filtered outside of this program
-
-        TODO catch errors and handle them in response
-
-        """
-    data = request.get_json()
-    print("\n Got request with data:" + str(data))
-
-    method = data['method']
-    url = data['url']
-    params = data['params']
-    jq = data['jq']
-    headers: Mapping[str, str] = get_headers(url)
-
-    r = requests.request(method, url, params=params, headers=headers)
-    d = r.json()
-    print("\nGot response:" + json.dumps(d))
-
-    int_data = int(process_json(d, jq))
-    print("Computed result: " + str(int_data))
-
-    di = IntDataItem(
+    jq = qr.filter
+    processed_response = process_json(d, jq, qr.schema)
+    feed_id = compute_feed_id(qr)
+    di = DataItem(
         timestamp=get_timestamp(),
-        value=int_data,
-        feed_id=compute_feed_id(data)
+        value=processed_response.encode(),
+        feed_id=feed_id
     )
     sign = di.sign_with_account(account)
-    return b64dict(FeedResponse(data=di, signature=sign))
+    response = QuexResponse(data=di, signature=sign)
+
+    return b64dict(response)
+
+#
+# # todo remove
+# @bp.route('/data/int', methods=['POST'])
+# def int_data_point():
+#     """Get json with the HTTPS request parameters and return processed and signed result
+#
+#         Json parameters:
+#         method : str
+#             method for the Request: ``GET``, ``OPTIONS``, ``HEAD``, ``POST``, ``PUT``, ``PATCH``, or ``DELETE``.
+#         url: str
+#             URL you're willing to certify
+#             Note: we assume here, that URL is coming from trusted source, e.g. it was already filtered outside of this program
+#         params: str
+#             Dictionary to send in the query string
+#         jq: str
+#             JQ program to be executed on top of the response json
+#             Note: we assume here, that jq query is coming from trusted source, e.g. it was already filtered outside of this program
+#
+#         TODO catch errors and handle them in response
+#
+#         """
+#     data = request.get_json()
+#     print("\n Got request with data:" + str(data))
+#
+#     method = data['method']
+#     url = data['url']
+#     params = data['params']
+#     jq = data['jq']
+#     headers: Mapping[str, str] = get_headers(url)
+#
+#     r = requests.request(method, url, params=params, headers=headers)
+#     d = r.json()
+#     print("\nGot response:" + json.dumps(d))
+#
+#     int_data = int(process_json(d, jq))
+#     print("Computed result: " + str(int_data))
+#
+#     di = IntDataItem(
+#         timestamp=get_timestamp(),
+#         value=int_data,
+#         feed_id=compute_feed_id(data)
+#     )
+#     sign = di.sign_with_account(account)
+#     return b64dict(FeedResponse(data=di, signature=sign))

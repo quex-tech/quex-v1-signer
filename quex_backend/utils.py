@@ -1,7 +1,9 @@
 from typing import Mapping
 from eth_utils import keccak
 from quex_backend import cmc_api_key
+from quex_backend.models import QuexRequest
 import json
+import eth_abi
 
 import ntplib
 import jq
@@ -13,8 +15,7 @@ def get_timestamp() -> int:
     """
     Get current timestamp.
 
-    # TODO do not rely on single server
-    # TODO handle errors
+    # TODO fix this method, see https://github.com/quex-tech/quex-v1-signer/issues/5
 
     :return: current NTP timestamp
     """
@@ -22,18 +23,19 @@ def get_timestamp() -> int:
     return round(response.tx_time)
 
 
-def compute_feed_id(data: Mapping[str, str]) -> bytes:
+def compute_feed_id(data: QuexRequest) -> bytes:
     """
     Create feed id from request parameters
 
-    :param data: dictionary with the request params
+    :param data: QuexRequest - data item
     :return: hash from encoded data
     """
-    msg_bytes = json.dumps(data, sort_keys=True).encode()
+    # TODO correct serialization here, see https://github.com/quex-tech/quex-v1-signer/issues/3
+    msg_bytes = "".encode()
     return keccak(msg_bytes)
 
 
-def process_json(input: str, json_query: str) -> str:
+def process_json(input: str, json_query: str, schema: str) -> bytes:
     """
     Execute JQ program over the input data
 
@@ -41,7 +43,10 @@ def process_json(input: str, json_query: str) -> str:
     :param json_query:
     :return:
     """
-    return jq.compile(json_query).input_value(input).first()
+    result = jq.compile(json_query).input_value(input).first()
+    # todo complex result https://github.com/quex-tech/quex-v1-signer/issues/12
+    encoded = eth_abi.encode(schema, result)
+    return encoded
 
 
 def get_headers(url: str) -> Mapping[str, str]:

@@ -11,38 +11,6 @@ from typing import List, Optional
 import json
 from urllib.parse import urljoin
 
-@dataclass
-class ETHSignature:
-    r: bytes
-    s: bytes
-    v: int
-
-    def fromETH(sig):
-        return ETHSignature(
-            r=sig.r.to_bytes(32, 'big'),
-            s=sig.s.to_bytes(32, 'big'),
-            v=sig.v
-        )
-
-
-@dataclass
-class IntDataItem:
-    timestamp: int
-    value: int
-    feed_id: bytes
-
-    def sign_with_account(self, account: Account):
-        msg = eth_abi.encode(["uint256", "uint256", "bytes32"], [self.value, self.timestamp, self.feed_id])
-        msghash = encode_defunct(keccak(msg))
-        return ETHSignature.fromETH(account.sign_message(msghash))
-
-
-# TODO: handle errors?
-@dataclass
-class FeedResponse:
-    data: IntDataItem
-    signature: ETHSignature
-
 
 def b64dict(obj):
     return dataclasses.asdict(obj,
@@ -202,3 +170,42 @@ class QuexRequest:
             schema=data['schema'],
             filter=data['filter']
         )
+
+
+#######################################
+# Data structures to provide response #
+#######################################
+
+@dataclass
+class ETHSignature:
+    r: bytes
+    s: bytes
+    v: int
+
+    def fromETH(sig):
+        return ETHSignature(
+            r=sig.r.to_bytes(32, 'big'),
+            s=sig.s.to_bytes(32, 'big'),
+            v=sig.v
+        )
+
+
+@dataclass
+class DataItem:
+    timestamp: int
+    feed_id: bytes
+    value: bytes
+
+    def to_bytes(self) -> bytes:
+        return eth_abi.encode(["uint256", "bytes32", "bytes"], [self.timestamp, self.feed_id, self.value])
+
+    def sign_with_account(self, account: Account):
+        msg = self.to_bytes()
+        msghash = encode_defunct(keccak(msg))
+        return ETHSignature.fromETH(account.sign_message(msghash))
+
+
+@dataclass
+class QuexResponse:
+    data: DataItem
+    signature: ETHSignature
