@@ -43,8 +43,6 @@ def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
     # Use JQ to filter the JSON input (input_json is expected to be a dictionary)
     result = jq.compile(json_query).input(input_json).first()
 
-    print("!! 1" + str(schema) + "|" + str(result))
-
     # Encode the result using the provided schema
     encoded = eth_abi.encode([schema], [result])
 
