@@ -1,7 +1,6 @@
 name: Python Tests
 
 on:
-  push:  # Run on every push to any branch
   pull_request:  # Also run on every pull request, regardless of the target branch
 
 jobs:
