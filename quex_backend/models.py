@@ -8,7 +8,7 @@ from eth_account import Account
 import eth_abi
 from enum import Enum
 from typing import List
-import msgpack
+import json
 
 
 @dataclass
@@ -152,7 +152,7 @@ class HTTPRequest:
     path: str
     headers: List[RequestHeader]
     parameters: List[QueryParameter]
-    body: dict  # msgpack-decoded body, stored as a dictionary
+    body: dict  # JSON-decoded body, stored as a dictionary
 
     @staticmethod
     def parse(data: dict):
@@ -160,9 +160,9 @@ class HTTPRequest:
         headers = [RequestHeader.parse(h) for h in data['headers']]
         parameters = [QueryParameter.parse(p) for p in data['parameters']]
 
-        # Decode the base64-encoded msgpack body
-        msgpack_body = base64.b64decode(data['body'])
-        body = msgpack.unpackb(msgpack_body)  # Unpack msgpack into a dictionary
+        # Decode the base64-encoded JSON body
+        body_json = base64.b64decode(data['body']).decode('utf-8')  # Decode base64 and convert to a string
+        body = json.loads(body_json)  # Convert the string to a dictionary
 
         return HTTPRequest(
             method=method,
@@ -170,7 +170,7 @@ class HTTPRequest:
             path=data['path'],
             headers=headers,
             parameters=parameters,
-            body=body  # Store the unpacked msgpack as a dictionary
+            body=body  # Store the unpacked JSON as a dictionary
         )
 
 

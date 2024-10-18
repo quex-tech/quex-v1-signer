@@ -113,15 +113,16 @@ class TestModelsParsing(unittest.TestCase):
         with self.assertRaises(KeyError):
             HTTPPrivatePatch.parse(data)
 
-    # Test HTTPRequest Parsing
-    def test_http_request_parsing_with_msgpack(self):
+    # Test HTTPRequest Parsing with JSON
+    def test_http_request_parsing(self):
         body_content = {
             "param1": "value1",
             "param2": 42,
             "param3": {"nested_key": "nested_value"}
         }
 
-        msgpack_encoded_body = base64.b64encode(msgpack.packb(body_content)).decode('utf-8')
+        # Encode the body as base64-encoded JSON
+        json_encoded_body = base64.b64encode(json.dumps(body_content).encode('utf-8')).decode('utf-8')
 
         data = {
             "method": "Get",
@@ -129,25 +130,26 @@ class TestModelsParsing(unittest.TestCase):
             "path": "/v1/resource",
             "headers": [{"key": "Content-Type", "value": "application/json"}],
             "parameters": [{"key": "id", "value": "1"}],
-            "body": msgpack_encoded_body
+            "body": json_encoded_body
         }
 
         http_request = HTTPRequest.parse(data)
         self.assertEqual(http_request.body, body_content)
 
-    def test_http_request_invalid_msgpack(self):
+
+    def test_http_request_invalid_json(self):
         data = {
             "method": "Get",
             "host": "api.example.com",
             "path": "/v1/resource",
             "headers": [{"key": "Content-Type", "value": "application/json"}],
             "parameters": [{"key": "id", "value": "1"}],
-            "body": base64.b64encode(b"invalid_msgpack").decode('utf-8')
+            "body": base64.b64encode(b"invalid_json").decode('utf-8')
         }
 
-        # Test for ExtraData exception, which occurs when msgpack receives extra data.
-        with self.assertRaises(msgpack.exceptions.ExtraData):
+        with self.assertRaises(json.JSONDecodeError):
             HTTPRequest.parse(data)
+
 
     def test_http_request_missing_field(self):
         data = {
@@ -169,7 +171,7 @@ class TestModelsParsing(unittest.TestCase):
             "param3": {"nested_key": "nested_value"}
         }
 
-        msgpack_encoded_body = base64.b64encode(msgpack.packb(body_content)).decode('utf-8')
+        json_encoded_body = base64.b64encode(json.dumps(body_content).encode('utf-8')).decode('utf-8')
         encrypted_value = base64.b64encode(b"encrypted_value").decode('utf-8')
 
         data = {
@@ -179,7 +181,7 @@ class TestModelsParsing(unittest.TestCase):
                 "path": "/v1/resource",
                 "headers": [{"key": "Content-Type", "value": "application/json"}],
                 "parameters": [{"key": "id", "value": "1"}],
-                "body": msgpack_encoded_body
+                "body": json_encoded_body
             },
             "patch": {
                 "path_suffix": encrypted_value,
@@ -198,6 +200,7 @@ class TestModelsParsing(unittest.TestCase):
         self.assertEqual(quex_request.schema, "int256")
         self.assertEqual(quex_request.filter, "(.data[\"1\"].quote.USD.price * 1000000) | round")
 
+
     def test_quex_request_missing_field(self):
         body_content = {
             "param1": "value1",
@@ -205,7 +208,7 @@ class TestModelsParsing(unittest.TestCase):
             "param3": {"nested_key": "nested_value"}
         }
 
-        msgpack_encoded_body = base64.b64encode(msgpack.packb(body_content)).decode('utf-8')
+        json_encoded_body = base64.b64encode(json.dumps(body_content).encode('utf-8')).decode('utf-8')
 
         data = {
             "request": {
@@ -214,7 +217,7 @@ class TestModelsParsing(unittest.TestCase):
                 "path": "/v1/resource",
                 "headers": [{"key": "Content-Type", "value": "application/json"}],
                 "parameters": [{"key": "id", "value": "1"}],
-                "body": msgpack_encoded_body
+                "body": json_encoded_body
             },
             # Missing 'patch', 'schema', and 'filter'
         }

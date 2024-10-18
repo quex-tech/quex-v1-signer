@@ -28,7 +28,6 @@ limits==3.13.0
 markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
-msgpack==1.1.0
 ntplib==0.4.0
 ordered-set==4.1.0
 packaging==24.1
