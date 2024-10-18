@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from quex_backend import account, cmc_api_key, get_quote
-from quex_backend.models import IntDataItem, FeedResponse, b64dict
+from quex_backend.models import *
 from quex_backend.td_quote import TDQuote
 from quex_backend.utils import *
 import requests
@@ -17,6 +17,16 @@ def quote():
     return b64dict(quote)
 
 
+@bp.route('/query', methods=['POST'])
+def query():
+    data = request.get_json()
+    print("\n 1 Got request with data:" + str(data))
+    quex_request = QuexRequest.parse(data)
+    print("\n 2 Got request with data:" + str(quex_request))
+    return "ok"
+
+
+# todo remove
 @bp.route('/data/int', methods=['POST'])
 def int_data_point():
     """Get json with the HTTPS request parameters and return processed and signed result

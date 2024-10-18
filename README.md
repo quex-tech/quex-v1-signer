@@ -48,12 +48,33 @@ From virtual environment
 
 ## Usage
 
-Get latest BTC price from CMC, multiply the result by 1000000, round value to integer:
+Get latest ETHBTC pair from Binance, multiply the result by 1000000, round value to integer:
 ```sh
  curl --header "Content-Type: application/json" \
   --request POST \
-  --data '{"method":"get","url":"https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest","params":{"id":"1"},"jq":"(.data[\"1\"].quote.USD.price * 1000000) | round"}' \
-  http://127.0.0.1:8000/data/int
+-d '{
+    "request": {
+        "method": "Get",
+        "host": "www.binance.com",
+        "path": "/api/v3/ticker/price",
+        "headers": [],
+        "body": "",
+        "parameters": []
+    },
+    "patch": {
+        "path_suffix": "",
+        "headers": [],
+        "parameters": [],
+        "body": "",
+        "td_id": 0
+    },
+    "filter": ".[] | select(.symbol == \"ETHBTC\") | (.price | tonumber * 100000000 | floor)",
+    "schema": "int256"
+}' \
+  http://127.0.0.1:8000/query
+
+
+
 ```
 
 
