@@ -25,6 +25,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV  # Add the root directory to PYTHONPATH
+
       - name: Set Environment Variables from .env
         run: |
           echo "CONFIG=$(pwd)/config.toml" >> $GITHUB_ENV  # Set path to the TOML file
