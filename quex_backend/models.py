@@ -7,7 +7,8 @@ from eth_account.messages import encode_defunct
 from eth_account import Account
 import eth_abi
 from enum import Enum
-from typing import List, Optional
+from typing import List
+import msgpack
 
 
 @dataclass
@@ -151,20 +152,25 @@ class HTTPRequest:
     path: str
     headers: List[RequestHeader]
     parameters: List[QueryParameter]
-    body: bytes  # msgpack-encoded JSON
+    body: dict  # msgpack-decoded body, stored as a dictionary
 
     @staticmethod
     def parse(data: dict):
         method = RequestMethod.parse(data['method'])
         headers = [RequestHeader.parse(h) for h in data['headers']]
         parameters = [QueryParameter.parse(p) for p in data['parameters']]
+
+        # Decode the base64-encoded msgpack body
+        msgpack_body = base64.b64decode(data['body'])
+        body = msgpack.unpackb(msgpack_body)  # Unpack msgpack into a dictionary
+
         return HTTPRequest(
             method=method,
             host=data['host'],
             path=data['path'],
             headers=headers,
             parameters=parameters,
-            body=base64.b64decode(data['body'])  # Decode base64
+            body=body  # Store the unpacked msgpack as a dictionary
         )
 
 
@@ -186,4 +192,3 @@ class QuexRequest:
             schema=data['schema'],
             filter=data['filter']
         )
-

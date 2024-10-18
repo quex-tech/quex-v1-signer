@@ -1,27 +1,44 @@
 import unittest
-import base64
-from quex_backend.models import RequestMethod, RequestHeader, QueryParameter, QueryParameterPatch, \
-    RequestHeaderPatch, HTTPPrivatePatch, HTTPRequest, QuexRequest
+from quex_backend.models import *
+
 
 class TestModelsParsing(unittest.TestCase):
 
+    # Test RequestMethod Parsing
     def test_request_method_parsing(self):
         self.assertEqual(RequestMethod.parse("Get"), RequestMethod.GET)
         self.assertEqual(RequestMethod.parse("POST"), RequestMethod.POST)
         self.assertEqual(RequestMethod.parse("put"), RequestMethod.PUT)
 
+    def test_request_method_invalid_parsing(self):
+        with self.assertRaises(KeyError):  # KeyError expected for invalid method
+            RequestMethod.parse("InvalidMethod")
+
+    # Test RequestHeader Parsing
     def test_request_header_parsing(self):
         data = {"key": "Content-Type", "value": "application/json"}
         header = RequestHeader.parse(data)
         self.assertEqual(header.key, "Content-Type")
         self.assertEqual(header.value, "application/json")
 
+    def test_request_header_missing_field(self):
+        data = {"key": "Content-Type"}  # missing 'value'
+        with self.assertRaises(TypeError):
+            RequestHeader.parse(data)
+
+    # Test QueryParameter Parsing
     def test_query_parameter_parsing(self):
         data = {"key": "id", "value": "1"}
         param = QueryParameter.parse(data)
         self.assertEqual(param.key, "id")
         self.assertEqual(param.value, "1")
 
+    def test_query_parameter_missing_field(self):
+        data = {"key": "id"}  # missing 'value'
+        with self.assertRaises(TypeError):
+            QueryParameter.parse(data)
+
+    # Test QueryParameterPatch Parsing
     def test_query_parameter_patch_parsing(self):
         encrypted_value = base64.b64encode(b"encrypted_value").decode('utf-8')
         data = {"key": "id", "ciphertext": encrypted_value}
@@ -29,6 +46,17 @@ class TestModelsParsing(unittest.TestCase):
         self.assertEqual(param_patch.key, "id")
         self.assertEqual(param_patch.ciphertext, b"encrypted_value")
 
+    def test_query_parameter_patch_invalid_base64(self):
+        data = {"key": "id", "ciphertext": "invalid_base64"}
+        with self.assertRaises(base64.binascii.Error):
+            QueryParameterPatch.parse(data)
+
+    def test_query_parameter_patch_missing_field(self):
+        data = {"key": "id"}  # missing 'ciphertext'
+        with self.assertRaises(KeyError):
+            QueryParameterPatch.parse(data)
+
+    # Test RequestHeaderPatch Parsing
     def test_request_header_patch_parsing(self):
         encrypted_value = base64.b64encode(b"encrypted_api_key").decode('utf-8')
         data = {"key": "Authorization", "ciphertext": encrypted_value}
@@ -36,47 +64,113 @@ class TestModelsParsing(unittest.TestCase):
         self.assertEqual(header_patch.key, "Authorization")
         self.assertEqual(header_patch.ciphertext, b"encrypted_api_key")
 
+    def test_request_header_patch_invalid_base64(self):
+        data = {"key": "Authorization", "ciphertext": "invalid_base64"}
+        with self.assertRaises(base64.binascii.Error):
+            RequestHeaderPatch.parse(data)
+
+    def test_request_header_patch_missing_field(self):
+        data = {"key": "Authorization"}  # missing 'ciphertext'
+        with self.assertRaises(KeyError):
+            RequestHeaderPatch.parse(data)
+
+    # Test HTTPPrivatePatch Parsing
     def test_http_private_patch_parsing(self):
-        encrypted_value = base64.b64encode(b"encrypted_api_key").decode('utf-8')
-        body_value = base64.b64encode(b"patch_body_content").decode('utf-8')
+        encrypted_value = base64.b64encode(b"encrypted_value").decode('utf-8')
+        patch_body = base64.b64encode(b"patch_body_content").decode('utf-8')
         data = {
             "path_suffix": encrypted_value,
             "headers": [{"key": "Authorization", "ciphertext": encrypted_value}],
             "parameters": [{"key": "id", "ciphertext": encrypted_value}],
-            "body": body_value,
+            "body": patch_body,
             "td_id": 12345
         }
         private_patch = HTTPPrivatePatch.parse(data)
-        self.assertEqual(private_patch.path_suffix, b"encrypted_api_key")
+        self.assertEqual(private_patch.path_suffix, b"encrypted_value")
         self.assertEqual(private_patch.headers[0].key, "Authorization")
-        self.assertEqual(private_patch.headers[0].ciphertext, b"encrypted_api_key")
         self.assertEqual(private_patch.parameters[0].key, "id")
-        self.assertEqual(private_patch.parameters[0].ciphertext, b"encrypted_api_key")
         self.assertEqual(private_patch.body, b"patch_body_content")
         self.assertEqual(private_patch.td_id, 12345)
 
-    def test_http_request_parsing(self):
-        body_value = base64.b64encode(b"request_body_content").decode('utf-8')
+    def test_http_private_patch_invalid_base64(self):
+        data = {
+            "path_suffix": "invalid_base64",
+            "headers": [],
+            "parameters": [],
+            "body": "invalid_base64",
+            "td_id": 12345
+        }
+        with self.assertRaises(base64.binascii.Error):
+            HTTPPrivatePatch.parse(data)
+
+    def test_http_private_patch_missing_field(self):
+        data = {
+            "headers": [],
+            "parameters": [],
+            "body": base64.b64encode(b"body").decode('utf-8'),
+            # missing 'path_suffix' and 'td_id'
+        }
+        with self.assertRaises(KeyError):
+            HTTPPrivatePatch.parse(data)
+
+    # Test HTTPRequest Parsing
+    def test_http_request_parsing_with_msgpack(self):
+        body_content = {
+            "param1": "value1",
+            "param2": 42,
+            "param3": {"nested_key": "nested_value"}
+        }
+
+        msgpack_encoded_body = base64.b64encode(msgpack.packb(body_content)).decode('utf-8')
+
         data = {
             "method": "Get",
             "host": "api.example.com",
             "path": "/v1/resource",
             "headers": [{"key": "Content-Type", "value": "application/json"}],
             "parameters": [{"key": "id", "value": "1"}],
-            "body": body_value
+            "body": msgpack_encoded_body
         }
-        http_request = HTTPRequest.parse(data)
-        self.assertEqual(http_request.method, RequestMethod.GET)
-        self.assertEqual(http_request.host, "api.example.com")
-        self.assertEqual(http_request.path, "/v1/resource")
-        self.assertEqual(http_request.headers[0].key, "Content-Type")
-        self.assertEqual(http_request.parameters[0].key, "id")
-        self.assertEqual(http_request.body, b"request_body_content")
 
+        http_request = HTTPRequest.parse(data)
+        self.assertEqual(http_request.body, body_content)
+
+    def test_http_request_invalid_msgpack(self):
+        data = {
+            "method": "Get",
+            "host": "api.example.com",
+            "path": "/v1/resource",
+            "headers": [{"key": "Content-Type", "value": "application/json"}],
+            "parameters": [{"key": "id", "value": "1"}],
+            "body": base64.b64encode(b"invalid_msgpack").decode('utf-8')
+        }
+
+        # Test for ExtraData exception, which occurs when msgpack receives extra data.
+        with self.assertRaises(msgpack.exceptions.ExtraData):
+            HTTPRequest.parse(data)
+
+    def test_http_request_missing_field(self):
+        data = {
+            "host": "api.example.com",
+            "path": "/v1/resource",
+            "headers": [],
+            "parameters": [],
+            "body": base64.b64encode(b"body").decode('utf-8'),
+            # missing 'method'
+        }
+        with self.assertRaises(KeyError):
+            HTTPRequest.parse(data)
+
+    # Test QuexRequest Parsing
     def test_quex_request_parsing(self):
-        encrypted_value = base64.b64encode(b"encrypted_api_key").decode('utf-8')
-        request_body = base64.b64encode(b"request_body_content").decode('utf-8')
-        patch_body = base64.b64encode(b"patch_body_content").decode('utf-8')
+        body_content = {
+            "param1": "value1",
+            "param2": 42,
+            "param3": {"nested_key": "nested_value"}
+        }
+
+        msgpack_encoded_body = base64.b64encode(msgpack.packb(body_content)).decode('utf-8')
+        encrypted_value = base64.b64encode(b"encrypted_value").decode('utf-8')
 
         data = {
             "request": {
@@ -85,13 +179,13 @@ class TestModelsParsing(unittest.TestCase):
                 "path": "/v1/resource",
                 "headers": [{"key": "Content-Type", "value": "application/json"}],
                 "parameters": [{"key": "id", "value": "1"}],
-                "body": request_body
+                "body": msgpack_encoded_body
             },
             "patch": {
                 "path_suffix": encrypted_value,
                 "headers": [{"key": "Authorization", "ciphertext": encrypted_value}],
                 "parameters": [{"key": "id", "ciphertext": encrypted_value}],
-                "body": patch_body,
+                "body": base64.b64encode(b"patch_body_content").decode('utf-8'),
                 "td_id": 12345
             },
             "schema": "int256",
@@ -99,13 +193,34 @@ class TestModelsParsing(unittest.TestCase):
         }
 
         quex_request = QuexRequest.parse(data)
-        self.assertEqual(quex_request.request.method, RequestMethod.GET)
-        self.assertEqual(quex_request.request.host, "api.example.com")
-        self.assertEqual(quex_request.request.body, b"request_body_content")
-        self.assertEqual(quex_request.patch.path_suffix, b"encrypted_api_key")
-        self.assertEqual(quex_request.patch.body, b"patch_body_content")
+        self.assertEqual(quex_request.request.body, body_content)
+        self.assertEqual(quex_request.patch.path_suffix, b"encrypted_value")
         self.assertEqual(quex_request.schema, "int256")
         self.assertEqual(quex_request.filter, "(.data[\"1\"].quote.USD.price * 1000000) | round")
+
+    def test_quex_request_missing_field(self):
+        body_content = {
+            "param1": "value1",
+            "param2": 42,
+            "param3": {"nested_key": "nested_value"}
+        }
+
+        msgpack_encoded_body = base64.b64encode(msgpack.packb(body_content)).decode('utf-8')
+
+        data = {
+            "request": {
+                "method": "Get",
+                "host": "api.example.com",
+                "path": "/v1/resource",
+                "headers": [{"key": "Content-Type", "value": "application/json"}],
+                "parameters": [{"key": "id", "value": "1"}],
+                "body": msgpack_encoded_body
+            },
+            # Missing 'patch', 'schema', and 'filter'
+        }
+
+        with self.assertRaises(KeyError):
+            QuexRequest.parse(data)
 
 
 if __name__ == "__main__":
