@@ -34,7 +34,7 @@ def query():
     feed_id = compute_feed_id(qr)
     di = DataItem(
         timestamp=get_timestamp(),
-        value=processed_response.encode(),
+        value=processed_response,
         feed_id=feed_id
     )
     sign = di.sign_with_account(account)
