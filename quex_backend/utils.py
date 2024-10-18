@@ -1,13 +1,12 @@
 from typing import Mapping
+
+import eth_abi
+import jq
+import ntplib
 from eth_utils import keccak
+
 from quex_backend import cmc_api_key
 from quex_backend.models import QuexRequest
-import json
-import eth_abi
-import re
-
-import ntplib
-import jq
 
 c = ntplib.NTPClient()
 

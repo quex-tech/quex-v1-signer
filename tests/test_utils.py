@@ -1,8 +1,8 @@
-import eth_abi
-import jq
-import pytest
-from quex_backend.utils import *  # Adjust to your actual module path
 import unittest
+
+import pytest
+
+from quex_backend.utils import *  # Adjust to your actual module path
 
 
 class TestUtils(unittest.TestCase):

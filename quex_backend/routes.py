@@ -1,10 +1,10 @@
+import requests
 from flask import Blueprint, request
-from quex_backend import account, cmc_api_key, get_quote
+
+from quex_backend import account, get_quote
 from quex_backend.models import *
 from quex_backend.td_quote import TDQuote
 from quex_backend.utils import *
-import requests
-import json
 
 bp = Blueprint('v1', __name__)
 

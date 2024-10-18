@@ -1,15 +1,16 @@
 import base64
-from dataclasses import dataclass
 import dataclasses
-from base64 import b64encode
-from eth_utils import keccak
-from eth_account.messages import encode_defunct
-from eth_account import Account
-import eth_abi
-from enum import Enum
-from typing import List, Optional
 import json
+from base64 import b64encode
+from dataclasses import dataclass
+from enum import Enum
+from typing import List
 from urllib.parse import urljoin
+
+import eth_abi
+from eth_account import Account
+from eth_account.messages import encode_defunct
+from eth_utils import keccak
 
 
 def b64dict(obj):
