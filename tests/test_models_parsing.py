@@ -5,6 +5,15 @@ from quex_backend.models import *
 
 class TestModelsParsing(unittest.TestCase):
 
+    # check that we can parse test vectors without errors
+    def test_test_vectors_parsing(self):
+        f = open('test_vectors.json')
+        vectors = json.load(f)
+        for v in vectors:
+            print(v)
+            obj = QuexRequest.parse(v["quex_request"])
+            self.assertEqual(obj.filter, v["quex_request"]["filter"])
+
     # Test RequestMethod Parsing
     def test_request_method_parsing(self):
         self.assertEqual(RequestMethod.parse("Get"), RequestMethod.GET)
@@ -137,7 +146,6 @@ class TestModelsParsing(unittest.TestCase):
         http_request = HTTPRequest.parse(data)
         self.assertEqual(http_request.body, body_content)
 
-
     def test_http_request_invalid_json(self):
         data = {
             "method": "Get",
@@ -150,7 +158,6 @@ class TestModelsParsing(unittest.TestCase):
 
         with self.assertRaises(json.JSONDecodeError):
             HTTPRequest.parse(data)
-
 
     def test_http_request_missing_field(self):
         data = {
@@ -200,7 +207,6 @@ class TestModelsParsing(unittest.TestCase):
         self.assertEqual(quex_request.patch.path_suffix, b"encrypted_value")
         self.assertEqual(quex_request.schema, "int256")
         self.assertEqual(quex_request.filter, "(.data[\"1\"].quote.USD.price * 1000000) | round")
-
 
     def test_quex_request_missing_field(self):
         body_content = {
