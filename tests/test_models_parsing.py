@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from quex_backend.models import *
 
@@ -7,7 +8,7 @@ class TestModelsParsing(unittest.TestCase):
 
     # check that we can parse test vectors without errors
     def test_test_vectors_parsing(self):
-        f = open('test_vectors.json')
+        f = open(Path(__file__).parent.resolve() / 'test_vectors.json')
         vectors = json.load(f)
         for v in vectors:
             print(v)
