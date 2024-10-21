@@ -1,0 +1,39 @@
+name: Python Tests
+
+on:
+  pull_request:  # Run tests only for pull requests
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.11]  # Only run tests on the latest Python version
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3  # Checkout the repository
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV  # Add the root directory to PYTHONPATH
+
+      - name: Set Environment Variables from .env
+        run: |
+          echo "CONFIG=$(pwd)/config.toml" >> $GITHUB_ENV  # Set path to the TOML file
+          echo "ETH_SIGNER_KEY=0x0000000000000000000000000000000000000000000000000000000000000001" >> $GITHUB_ENV
+          echo "DEBUG=1" >> $GITHUB_ENV
+          echo "COINMARKETCAP_API_KEY=dummy_api_key_here" >> $GITHUB_ENV  # Set API key
+
+      - name: Run tests
+        run: pytest

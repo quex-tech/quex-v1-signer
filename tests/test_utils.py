@@ -1,63 +1,115 @@
-from quex_backend.utils import *
-import json
+import unittest
+
+import pytest
+
+from quex_backend.utils import *  # Adjust to your actual module path
 
 
-def test_get_timestamp():
-    ts = get_timestamp()
-    assert ts > 1727864076
-    ts2 = get_timestamp()
-    assert ts2 >= ts
+class TestUtils(unittest.TestCase):
+
+    def test_process_json_multiple_values(self):
+        # Input JSON as a dictionary
+        input_json = {
+            "value1": 123456,
+            "value2": 654321
+        }
+
+        # JQ query to extract multiple values
+        json_query = '[.value1, .value2]'
+
+        # Expected ABI schema for the result (multiple uint256 values)
+        schema = "(uint256,uint256)"
+
+        # Expected result to be encoded
+        expected_result = [123456, 654321]
+
+        # Encode the expected result using eth_abi directly to compare
+        expected_encoded = eth_abi.encode([schema], [expected_result])
+
+        # Process the input JSON with the process_json function
+        actual_encoded = process_json(input_json, json_query, schema)
+
+        # Assert that the actual encoded bytes match the expected encoded bytes
+        assert actual_encoded == expected_encoded
+
+    def test_process_json_single_integer(self):
+        # Input JSON as a dictionary
+        input_json = {
+            "value": 123456
+        }
+
+        # JQ query to extract a single integer value
+        json_query = '.value'
+
+        # Expected ABI schema for a single uint256
+        schema = "uint256"
+
+        # Expected result to be encoded
+        expected_result = 123456
+
+        # Encode the expected result using eth_abi directly to compare
+        expected_encoded = eth_abi.encode(['uint256'], [expected_result])
+
+        # Process the input JSON with the process_json function
+        actual_encoded = process_json(input_json, json_query, schema)
+
+        # Assert that the actual encoded bytes match the expected encoded bytes
+        assert actual_encoded == expected_encoded
+
+    def test_process_json_complex_data(self):
+        # Input JSON from Binance API (example response)
+        input_json = {
+            "lastUpdateId": 52933493429,
+            "bids": [
+                ["65615.89000000", "3.36758000"],
+                ["65615.88000000", "1.52340000"],
+                ["65615.87000000", "2.23400000"],
+                ["65615.86000000", "4.34510000"],
+                ["65615.85000000", "0.34660000"]
+            ],
+            "asks": [
+                ["65615.90000000", "3.52297000"],
+                ["65615.91000000", "2.12340000"],
+                ["65615.92000000", "1.03400000"],
+                ["65615.93000000", "3.56780000"],
+                ["65615.94000000", "4.89000000"]
+            ]
+        }
+
+        # JQ query to extract and process data
+        json_query = '[.lastUpdateId] + ([.bids, .asks] | map(map(map(tonumber*100000000|round))))'
+
+        # Expected ABI schema for the result (OrderBook structure)
+        schema = "(uint256,(uint256,uint256)[5],(uint256,uint256)[5])"
+
+        # Expected result after processing the bids and asks, with scaling and conversion
+        expected_result = [
+            52933493429,  # lastUpdateId
+            [  # Bids (price * 1e8, quantity * 1e8)
+                (6561589000000, 336758000),
+                (6561588000000, 152340000),
+                (6561587000000, 223400000),
+                (6561586000000, 434510000),
+                (6561585000000, 34660000)
+            ],
+            [  # Asks (price * 1e8, quantity * 1e8)
+                (6561590000000, 352297000),
+                (6561591000000, 212340000),
+                (6561592000000, 103400000),
+                (6561593000000, 356780000),
+                (6561594000000, 489000000)
+            ]
+        ]
+
+        # Properly encode the expected result using eth_abi
+        expected_encoded = eth_abi.encode([schema], [expected_result])
+
+        # Process the input JSON with the process_json function
+        actual_encoded = process_json(input_json, json_query, schema)
+
+        # Assert that the actual encoded bytes match the expected encoded bytes
+        assert actual_encoded == expected_encoded
 
 
-def test_get_feed_id():
-    # test vector
-    data1 = {
-        "method": "get",
-        "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest",
-        "params": {"id": "1", "a": "2", "c": "3"},
-        "jq": "(.data[\"1\"].quote.USD.price * 1000000) | round"
-    }
-    feed_id = compute_feed_id(data1)
-    assert feed_id.hex() == "0163cbb54974117a2b078de281150281905e942f98ae973aaf24774ae383902c"
-
-    # test that feed id do not depend on params order
-    data2 = {
-        "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest",
-        "params": {"id": "1", "a": "2", "c": "3"},
-        "method": "get",
-        "jq": "(.data[\"1\"].quote.USD.price * 1000000) | round"
-    }
-    assert feed_id.hex() == compute_feed_id(data2).hex()
-
-    # test that feed id do not depend on params additional order
-    data3 = {
-        "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest",
-        "params": {"id": "1", "a": "2", "c": "3"},
-        "jq": "(.data[\"1\"].quote.USD.price * 1000000) | round"
-    }
-    data3["method"] = "get"
-    assert feed_id.hex() == compute_feed_id(data3).hex()
-
-    # test that feed id change if we change a parameter
-    data3["method"] = "post"
-    assert compute_feed_id(data3).hex() == "04011bb0604e6900b50895da27458bd51c70bebee98f74cbdcfaeb0765db6b8a"
-
-
-def test_process_json():
-    bnb_example_response = '[{"symbol":"ETHBTC","price":"0.03912000"},{"symbol":"LTCBTC","price":"0.00105700"},{"symbol":"BNBBTC","price":"0.00938000"}]'
-    bnb_parsed_json = json.loads(bnb_example_response)
-
-    cmc_example_response = '{"status": {"timestamp": "2024-10-02T18:42:37.954Z", "error_code": 0, "error_message": null, "elapsed": 119, "credit_count": 1, "notice": null}, "data": {"1": {"id": 1, "name": "Bitcoin", "symbol": "BTC", "slug": "bitcoin", "num_market_pairs": 11751, "date_added": "2010-07-13T00:00:00.000Z", "tags": [{"slug": "mineable", "name": "Mineable", "category": "OTHERS"}, {"slug": "pow", "name": "PoW", "category": "ALGORITHM"}, {"slug": "sha-256", "name": "SHA-256", "category": "ALGORITHM"}, {"slug": "store-of-value", "name": "Store Of Value", "category": "CATEGORY"}, {"slug": "state-channel", "name": "State Channel", "category": "CATEGORY"}, {"slug": "coinbase-ventures-portfolio", "name": "Coinbase Ventures Portfolio", "category": "CATEGORY"}, {"slug": "three-arrows-capital-portfolio", "name": "Three Arrows Capital Portfolio", "category": "CATEGORY"}, {"slug": "polychain-capital-portfolio", "name": "Polychain Capital Portfolio", "category": "CATEGORY"}, {"slug": "binance-labs-portfolio", "name": "Binance Labs Portfolio", "category": "CATEGORY"}, {"slug": "blockchain-capital-portfolio", "name": "Blockchain Capital Portfolio", "category": "CATEGORY"}, {"slug": "boostvc-portfolio", "name": "BoostVC Portfolio", "category": "CATEGORY"}, {"slug": "cms-holdings-portfolio", "name": "CMS Holdings Portfolio", "category": "CATEGORY"}, {"slug": "dcg-portfolio", "name": "DCG Portfolio", "category": "CATEGORY"}, {"slug": "dragonfly-capital-portfolio", "name": "DragonFly Capital Portfolio", "category": "CATEGORY"}, {"slug": "electric-capital-portfolio", "name": "Electric Capital Portfolio", "category": "CATEGORY"}, {"slug": "fabric-ventures-portfolio", "name": "Fabric Ventures Portfolio", "category": "CATEGORY"}, {"slug": "framework-ventures-portfolio", "name": "Framework Ventures Portfolio", "category": "CATEGORY"}, {"slug": "galaxy-digital-portfolio", "name": "Galaxy Digital Portfolio", "category": "CATEGORY"}, {"slug": "huobi-capital-portfolio", "name": "Huobi Capital Portfolio", "category": "CATEGORY"}, {"slug": "alameda-research-portfolio", "name": "Alameda Research Portfolio", "category": "CATEGORY"}, {"slug": "a16z-portfolio", "name": "a16z Portfolio", "category": "CATEGORY"}, {"slug": "1confirmation-portfolio", "name": "1Confirmation Portfolio", "category": "CATEGORY"}, {"slug": "winklevoss-capital-portfolio", "name": "Winklevoss Capital Portfolio", "category": "CATEGORY"}, {"slug": "usv-portfolio", "name": "USV Portfolio", "category": "CATEGORY"}, {"slug": "placeholder-ventures-portfolio", "name": "Placeholder Ventures Portfolio", "category": "CATEGORY"}, {"slug": "pantera-capital-portfolio", "name": "Pantera Capital Portfolio", "category": "CATEGORY"}, {"slug": "multicoin-capital-portfolio", "name": "Multicoin Capital Portfolio", "category": "CATEGORY"}, {"slug": "paradigm-portfolio", "name": "Paradigm Portfolio", "category": "CATEGORY"}, {"slug": "bitcoin-ecosystem", "name": "Bitcoin Ecosystem", "category": "PLATFORM"}, {"slug": "ftx-bankruptcy-estate", "name": "FTX Bankruptcy Estate ", "category": "CATEGORY"}], "max_supply": 21000000, "circulating_supply": 19761981, "total_supply": 19761981, "is_active": 1, "infinite_supply": false, "platform": null, "cmc_rank": 1, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:41:00.000Z", "quote": {"USD": {"price": 61083.19108410595, "volume_24h": 42921908640.79063, "volume_change_24h": -3.1527, "percent_change_1h": -0.59716543, "percent_change_24h": -1.66794443, "percent_change_7d": -3.39693382, "percent_change_30d": 4.34512221, "percent_change_60d": 1.35626544, "percent_change_90d": 4.96507196, "market_cap": 1207124861623.4712, "market_cap_dominance": 56.6634, "fully_diluted_market_cap": 1282747012766.22, "tvl": null, "last_updated": "2024-10-02T18:41:00.000Z"}}}, "52": {"id": 52, "name": "XRP", "symbol": "XRP", "slug": "xrp", "num_market_pairs": 1398, "date_added": "2013-08-04T00:00:00.000Z", "tags": [{"slug": "medium-of-exchange", "name": "Medium of Exchange", "category": "INDUSTRY"}, {"slug": "enterprise-solutions", "name": "Enterprise Solutions", "category": "INDUSTRY"}, {"slug": "arrington-xrp-capital-portfolio", "name": "Arrington XRP Capital Portfolio", "category": "CATEGORY"}, {"slug": "galaxy-digital-portfolio", "name": "Galaxy Digital Portfolio", "category": "CATEGORY"}, {"slug": "a16z-portfolio", "name": "a16z Portfolio", "category": "CATEGORY"}, {"slug": "pantera-capital-portfolio", "name": "Pantera Capital Portfolio", "category": "CATEGORY"}, {"slug": "ftx-bankruptcy-estate", "name": "FTX Bankruptcy Estate ", "category": "CATEGORY"}], "max_supply": 100000000000, "circulating_supply": 56564039920, "total_supply": 99987161962, "is_active": 1, "infinite_supply": false, "platform": null, "cmc_rank": 7, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:41:00.000Z", "quote": {"USD": {"price": 0.5736488304490974, "volume_24h": 2523616431.2364244, "volume_change_24h": 25.7543, "percent_change_1h": -1.51060131, "percent_change_24h": -4.56605119, "percent_change_7d": -2.03314143, "percent_change_30d": 2.16042963, "percent_change_60d": 4.3017949, "percent_change_90d": 31.05078176, "market_cap": 32447895345.584057, "market_cap_dominance": 1.5221, "fully_diluted_market_cap": 57364883044.91, "tvl": null, "last_updated": "2024-10-02T18:41:00.000Z"}}}, "74": {"id": 74, "name": "Dogecoin", "symbol": "DOGE", "slug": "dogecoin", "num_market_pairs": 1076, "date_added": "2013-12-15T00:00:00.000Z", "tags": [{"slug": "mineable", "name": "Mineable", "category": "OTHERS"}, {"slug": "pow", "name": "PoW", "category": "ALGORITHM"}, {"slug": "scrypt", "name": "Scrypt", "category": "ALGORITHM"}, {"slug": "medium-of-exchange", "name": "Medium of Exchange", "category": "INDUSTRY"}, {"slug": "memes", "name": "Memes", "category": "INDUSTRY"}, {"slug": "payments", "name": "Payments", "category": "INDUSTRY"}, {"slug": "doggone-doggerel", "name": "Doggone Doggerel", "category": "CATEGORY"}, {"slug": "bnb-chain", "name": "BNB Chain", "category": "PLATFORM"}, {"slug": "ftx-bankruptcy-estate", "name": "FTX Bankruptcy Estate ", "category": "CATEGORY"}], "max_supply": null, "circulating_supply": 146202356383.70526, "total_supply": 146202356383.70526, "is_active": 1, "infinite_supply": true, "platform": null, "cmc_rank": 8, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:41:00.000Z", "quote": {"USD": {"price": 0.10459757785453362, "volume_24h": 988802766.9338704, "volume_change_24h": -19.7926, "percent_change_1h": -0.92070766, "percent_change_24h": -2.89066697, "percent_change_7d": -4.54926852, "percent_change_30d": 6.89777065, "percent_change_60d": -2.44200571, "percent_change_90d": -3.05988539, "market_cap": 15292412354.360882, "market_cap_dominance": 0.7174, "fully_diluted_market_cap": 15292412354.36, "tvl": null, "last_updated": "2024-10-02T18:41:00.000Z"}}}, "825": {"id": 825, "name": "Tether USDt", "symbol": "USDT", "slug": "tether", "num_market_pairs": 99264, "date_added": "2015-02-25T00:00:00.000Z", "tags": [{"slug": "stablecoin", "name": "Stablecoin", "category": "CATEGORY"}, {"slug": "asset-backed-stablecoin", "name": "Asset-Backed Stablecoin", "category": "CATEGORY"}, {"slug": "avalanche-ecosystem", "name": "Avalanche Ecosystem", "category": "PLATFORM"}, {"slug": "solana-ecosystem", "name": "Solana Ecosystem", "category": "PLATFORM"}, {"slug": "arbitrum-ecosytem", "name": "Arbitrum Ecosystem", "category": "PLATFORM"}, {"slug": "moonriver-ecosystem", "name": "Moonriver Ecosystem", "category": "PLATFORM"}, {"slug": "injective-ecosystem", "name": "Injective Ecosystem", "category": "PLATFORM"}, {"slug": "bnb-chain", "name": "BNB Chain", "category": "PLATFORM"}, {"slug": "usd-stablecoin", "name": "USD Stablecoin", "category": "CATEGORY"}, {"slug": "optimism-ecosystem", "name": "Optimism Ecosystem", "category": "PLATFORM"}, {"slug": "fiat-stablecoin", "name": "Fiat Stablecoin", "category": "CATEGORY"}], "max_supply": null, "circulating_supply": 119657675160.64133, "total_supply": 121372683857.27858, "platform": {"id": 1027, "name": "Ethereum", "symbol": "ETH", "slug": "ethereum", "token_address": "0xdac17f958d2ee523a2206206994597c13d831ec7"}, "is_active": 1, "infinite_supply": true, "cmc_rank": 3, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:40:00.000Z", "quote": {"USD": {"price": 0.9999687494110927, "volume_24h": 72714527953.72818, "volume_change_24h": -8.8212, "percent_change_1h": 0.00304036, "percent_change_24h": 0.01498583, "percent_change_7d": 0.0130385, "percent_change_30d": 0.00176058, "percent_change_60d": 0.05979335, "percent_change_90d": 0.05877877, "market_cap": 119653935787.82527, "market_cap_dominance": 5.613, "fully_diluted_market_cap": 121368890889.43, "tvl": null, "last_updated": "2024-10-02T18:40:00.000Z"}}}, "1027": {"id": 1027, "name": "Ethereum", "symbol": "ETH", "slug": "ethereum", "num_market_pairs": 9371, "date_added": "2015-08-07T00:00:00.000Z", "tags": [{"slug": "pos", "name": "PoS", "category": "ALGORITHM"}, {"slug": "smart-contracts", "name": "Smart Contracts", "category": "CATEGORY"}, {"slug": "ethereum-ecosystem", "name": "Ethereum Ecosystem", "category": "PLATFORM"}, {"slug": "coinbase-ventures-portfolio", "name": "Coinbase Ventures Portfolio", "category": "CATEGORY"}, {"slug": "three-arrows-capital-portfolio", "name": "Three Arrows Capital Portfolio", "category": "CATEGORY"}, {"slug": "polychain-capital-portfolio", "name": "Polychain Capital Portfolio", "category": "CATEGORY"}, {"slug": "binance-labs-portfolio", "name": "Binance Labs Portfolio", "category": "CATEGORY"}, {"slug": "blockchain-capital-portfolio", "name": "Blockchain Capital Portfolio", "category": "CATEGORY"}, {"slug": "boostvc-portfolio", "name": "BoostVC Portfolio", "category": "CATEGORY"}, {"slug": "cms-holdings-portfolio", "name": "CMS Holdings Portfolio", "category": "CATEGORY"}, {"slug": "dcg-portfolio", "name": "DCG Portfolio", "category": "CATEGORY"}, {"slug": "dragonfly-capital-portfolio", "name": "DragonFly Capital Portfolio", "category": "CATEGORY"}, {"slug": "electric-capital-portfolio", "name": "Electric Capital Portfolio", "category": "CATEGORY"}, {"slug": "fabric-ventures-portfolio", "name": "Fabric Ventures Portfolio", "category": "CATEGORY"}, {"slug": "framework-ventures-portfolio", "name": "Framework Ventures Portfolio", "category": "CATEGORY"}, {"slug": "hashkey-capital-portfolio", "name": "Hashkey Capital Portfolio", "category": "CATEGORY"}, {"slug": "kenetic-capital-portfolio", "name": "Kenetic Capital Portfolio", "category": "CATEGORY"}, {"slug": "huobi-capital-portfolio", "name": "Huobi Capital Portfolio", "category": "CATEGORY"}, {"slug": "alameda-research-portfolio", "name": "Alameda Research Portfolio", "category": "CATEGORY"}, {"slug": "a16z-portfolio", "name": "a16z Portfolio", "category": "CATEGORY"}, {"slug": "1confirmation-portfolio", "name": "1Confirmation Portfolio", "category": "CATEGORY"}, {"slug": "winklevoss-capital-portfolio", "name": "Winklevoss Capital Portfolio", "category": "CATEGORY"}, {"slug": "usv-portfolio", "name": "USV Portfolio", "category": "CATEGORY"}, {"slug": "placeholder-ventures-portfolio", "name": "Placeholder Ventures Portfolio", "category": "CATEGORY"}, {"slug": "pantera-capital-portfolio", "name": "Pantera Capital Portfolio", "category": "CATEGORY"}, {"slug": "multicoin-capital-portfolio", "name": "Multicoin Capital Portfolio", "category": "CATEGORY"}, {"slug": "paradigm-portfolio", "name": "Paradigm Portfolio", "category": "CATEGORY"}, {"slug": "layer-1", "name": "Layer 1", "category": "CATEGORY"}, {"slug": "ftx-bankruptcy-estate", "name": "FTX Bankruptcy Estate ", "category": "CATEGORY"}], "max_supply": null, "circulating_supply": 120370050.27895604, "total_supply": 120370050.27895604, "is_active": 1, "infinite_supply": true, "platform": null, "cmc_rank": 2, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:40:00.000Z", "quote": {"USD": {"price": 2410.214628006184, "volume_24h": 20845671263.413864, "volume_change_24h": -10.3891, "percent_change_1h": -1.27875199, "percent_change_24h": -3.6957947, "percent_change_7d": -6.5644928, "percent_change_30d": -4.47739159, "percent_change_60d": -17.04098194, "percent_change_90d": -23.16781612, "market_cap": 290117655956.1797, "market_cap_dominance": 13.6125, "fully_diluted_market_cap": 290117655956.18, "tvl": null, "last_updated": "2024-10-02T18:40:00.000Z"}}}, "1839": {"id": 1839, "name": "BNB", "symbol": "BNB", "slug": "bnb", "num_market_pairs": 2252, "date_added": "2017-07-25T00:00:00.000Z", "tags": [{"slug": "marketplace", "name": "Marketplace", "category": "INDUSTRY"}, {"slug": "centralized-exchange", "name": "Centralized Exchange (CEX) Token", "category": "CATEGORY"}, {"slug": "payments", "name": "Payments", "category": "INDUSTRY"}, {"slug": "smart-contracts", "name": "Smart Contracts", "category": "CATEGORY"}, {"slug": "alameda-research-portfolio", "name": "Alameda Research Portfolio", "category": "CATEGORY"}, {"slug": "multicoin-capital-portfolio", "name": "Multicoin Capital Portfolio", "category": "CATEGORY"}, {"slug": "bnb-chain", "name": "BNB Chain", "category": "PLATFORM"}, {"slug": "layer-1", "name": "Layer 1", "category": "CATEGORY"}, {"slug": "sec-security-token", "name": "SEC Security Token", "category": "CATEGORY"}, {"slug": "alleged-sec-securities", "name": "Alleged SEC Securities", "category": "CATEGORY"}, {"slug": "celsius-bankruptcy-estate", "name": "Celsius Bankruptcy Estate", "category": "CATEGORY"}], "max_supply": null, "circulating_supply": 145932658.09779653, "total_supply": 145932658.09779653, "is_active": 1, "infinite_supply": false, "platform": null, "cmc_rank": 4, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:40:00.000Z", "quote": {"USD": {"price": 542.5006783108172, "volume_24h": 1882603192.8274107, "volume_change_24h": -6.3168, "percent_change_1h": -0.72655958, "percent_change_24h": -1.93240091, "percent_change_7d": -8.02515672, "percent_change_30d": 4.00158267, "percent_change_60d": 2.97360169, "percent_change_90d": 3.53517274, "market_cap": 79168566005.75519, "market_cap_dominance": 3.7168, "fully_diluted_market_cap": 79168566005.76, "tvl": null, "last_updated": "2024-10-02T18:40:00.000Z"}}}, "1958": {"id": 1958, "name": "TRON", "symbol": "TRX", "slug": "tron", "num_market_pairs": 1042, "date_added": "2017-09-13T00:00:00.000Z", "tags": [{"slug": "media", "name": "Media", "category": "INDUSTRY"}, {"slug": "payments", "name": "Payments", "category": "INDUSTRY"}, {"slug": "tron-ecosystem", "name": "TRON Ecosystem", "category": "PLATFORM"}, {"slug": "layer-1", "name": "Layer 1", "category": "CATEGORY"}, {"slug": "dwf-labs-portfolio", "name": "DWF Labs Portfolio", "category": "CATEGORY"}, {"slug": "sec-security-token", "name": "SEC Security Token", "category": "CATEGORY"}, {"slug": "alleged-sec-securities", "name": "Alleged SEC Securities", "category": "CATEGORY"}], "max_supply": null, "circulating_supply": 86598402466.02005, "total_supply": 86598505440.73526, "is_active": 1, "infinite_supply": true, "platform": null, "cmc_rank": 10, "is_fiat": 0, "self_reported_circulating_supply": 71659659264, "self_reported_market_cap": 11089999576.783281, "tvl_ratio": null, "last_updated": "2024-10-02T18:40:00.000Z", "quote": {"USD": {"price": 0.15475931215255745, "volume_24h": 378132607.41898346, "volume_change_24h": -11.5347, "percent_change_1h": -0.13941914, "percent_change_24h": 0.3851117, "percent_change_7d": 3.03088725, "percent_change_30d": 0.46916162, "percent_change_60d": 23.77596788, "percent_change_90d": 21.82752219, "market_cap": 13401909199.151598, "market_cap_dominance": 0.6287, "fully_diluted_market_cap": 13401925135.45, "tvl": null, "last_updated": "2024-10-02T18:40:00.000Z"}}}, "3408": {"id": 3408, "name": "USDC", "symbol": "USDC", "slug": "usd-coin", "num_market_pairs": 22263, "date_added": "2018-10-08T00:00:00.000Z", "tags": [{"slug": "medium-of-exchange", "name": "Medium of Exchange", "category": "INDUSTRY"}, {"slug": "stablecoin", "name": "Stablecoin", "category": "CATEGORY"}, {"slug": "asset-backed-stablecoin", "name": "Asset-Backed Stablecoin", "category": "CATEGORY"}, {"slug": "coinbase-ventures-portfolio", "name": "Coinbase Ventures Portfolio", "category": "CATEGORY"}, {"slug": "solana-ecosystem", "name": "Solana Ecosystem", "category": "PLATFORM"}, {"slug": "hedera-hashgraph-ecosystem", "name": "Hedera Hashgraph Ecosystem", "category": "PLATFORM"}, {"slug": "arbitrum-ecosytem", "name": "Arbitrum Ecosystem", "category": "PLATFORM"}, {"slug": "moonriver-ecosystem", "name": "Moonriver Ecosystem", "category": "PLATFORM"}, {"slug": "bnb-chain", "name": "BNB Chain", "category": "PLATFORM"}, {"slug": "usd-stablecoin", "name": "USD Stablecoin", "category": "CATEGORY"}, {"slug": "optimism-ecosystem", "name": "Optimism Ecosystem", "category": "PLATFORM"}, {"slug": "base-ecosystem", "name": "Base Ecosystem", "category": "PLATFORM"}, {"slug": "fiat-stablecoin", "name": "Fiat Stablecoin", "category": "CATEGORY"}], "max_supply": null, "circulating_supply": 35501110490.0463, "total_supply": 35501110490.0463, "platform": {"id": 1027, "name": "Ethereum", "symbol": "ETH", "slug": "ethereum", "token_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"}, "is_active": 1, "infinite_supply": false, "cmc_rank": 6, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:40:00.000Z", "quote": {"USD": {"price": 0.999923923950335, "volume_24h": 8276924115.23046, "volume_change_24h": -7.7683, "percent_change_1h": -0.00324787, "percent_change_24h": -0.00956652, "percent_change_7d": 0.0021638, "percent_change_30d": -0.01130856, "percent_change_60d": -0.01247763, "percent_change_90d": -0.01077151, "market_cap": 35498409705.8015, "market_cap_dominance": 1.6656, "fully_diluted_market_cap": 35498409705.8, "tvl": null, "last_updated": "2024-10-02T18:40:00.000Z"}}}, "5426": {"id": 5426, "name": "Solana", "symbol": "SOL", "slug": "solana", "num_market_pairs": 748, "date_added": "2020-04-10T00:00:00.000Z", "tags": [{"slug": "pos", "name": "PoS", "category": "ALGORITHM"}, {"slug": "platform", "name": "Platform", "category": "CATEGORY"}, {"slug": "solana-ecosystem", "name": "Solana Ecosystem", "category": "PLATFORM"}, {"slug": "cms-holdings-portfolio", "name": "CMS Holdings Portfolio", "category": "CATEGORY"}, {"slug": "kenetic-capital-portfolio", "name": "Kenetic Capital Portfolio", "category": "CATEGORY"}, {"slug": "alameda-research-portfolio", "name": "Alameda Research Portfolio", "category": "CATEGORY"}, {"slug": "multicoin-capital-portfolio", "name": "Multicoin Capital Portfolio", "category": "CATEGORY"}, {"slug": "okx-ventures-portfolio", "name": "OKX Ventures Portfolio", "category": "CATEGORY"}, {"slug": "layer-1", "name": "Layer 1", "category": "CATEGORY"}, {"slug": "ftx-bankruptcy-estate", "name": "FTX Bankruptcy Estate ", "category": "CATEGORY"}, {"slug": "sec-security-token", "name": "SEC Security Token", "category": "CATEGORY"}, {"slug": "alleged-sec-securities", "name": "Alleged SEC Securities", "category": "CATEGORY"}, {"slug": "cmc-crypto-awards-2024", "name": "CMC Crypto Awards 2024", "category": "CATEGORY"}], "max_supply": null, "circulating_supply": 468377940.9124021, "total_supply": 585673736.0443354, "is_active": 1, "infinite_supply": true, "platform": null, "cmc_rank": 5, "is_fiat": 0, "self_reported_circulating_supply": null, "self_reported_market_cap": null, "tvl_ratio": null, "last_updated": "2024-10-02T18:40:00.000Z", "quote": {"USD": {"price": 144.0241329339048, "volume_24h": 2796452365.3217645, "volume_change_24h": -14.7381, "percent_change_1h": -1.11379669, "percent_change_24h": -2.76598693, "percent_change_7d": -4.02790716, "percent_change_30d": 8.18924623, "percent_change_60d": 1.49383613, "percent_change_90d": 7.05432903, "market_cap": 67457726825.27641, "market_cap_dominance": 3.1645, "fully_diluted_market_cap": 84351152015.95, "tvl": null, "last_updated": "2024-10-02T18:40:00.000Z"}}}, "11419": {"id": 11419, "name": "Toncoin", "symbol": "TON", "slug": "toncoin", "num_market_pairs": 569, "date_added": "2021-08-26T13:40:22.000Z", "tags": [{"slug": "pos", "name": "PoS", "category": "ALGORITHM"}, {"slug": "layer-1", "name": "Layer 1", "category": "CATEGORY"}, {"slug": "ftx-bankruptcy-estate", "name": "FTX Bankruptcy Estate ", "category": "CATEGORY"}, {"slug": "dwf-labs-portfolio", "name": "DWF Labs Portfolio", "category": "CATEGORY"}, {"slug": "toncoin-ecosystem", "name": "Toncoin Ecosystem", "category": "PLATFORM"}], "max_supply": null, "circulating_supply": 2531769755.651432, "total_supply": 5112458953.684653, "is_active": 1, "infinite_supply": true, "platform": null, "cmc_rank": 9, "is_fiat": 0, "self_reported_circulating_supply": 3414166606, "self_reported_market_cap": 18391642432.68446, "tvl_ratio": null, "last_updated": "2024-10-02T18:40:00.000Z", "quote": {"USD": {"price": 5.386861437975315, "volume_24h": 302818673.7902533, "volume_change_24h": -23.7615, "percent_change_1h": -0.90639947, "percent_change_24h": -0.07481035, "percent_change_7d": -5.37507193, "percent_change_30d": 4.42598533, "percent_change_60d": -7.88678654, "percent_change_90d": -25.18246578, "market_cap": 13638292866.550886, "market_cap_dominance": 0.6402, "fully_diluted_market_cap": 27540107990.84, "tvl": null, "last_updated": "2024-10-02T18:40:00.000Z"}}}}}'
-    cmc_parsed_json = json.loads(cmc_example_response)
-
-    test_vectors = [{"input": cmc_parsed_json, "json_query": '.data["1"].quote.USD.price', "output": 61083.19108410595},
-                    {"input": cmc_parsed_json, "json_query": '(.data["1"].quote.USD.price * 1000000) | round',
-                     "output": 61083191084},
-                    {"input": cmc_parsed_json, "json_query": ".status.timestamp", "output": "2024-10-02T18:42:37.954Z"},
-                    {"input": bnb_parsed_json, "json_query": ".[] | select(.symbol == \"ETHBTC\") | (.price | tonumber * 100000000 | floor)", "output": 3912000},
-                    {"input": bnb_parsed_json, "json_query": "((.[] | select(.symbol == \"ETHBTC\") | .price | tonumber) * 0.6 + (.[] | select(.symbol == \"LTCBTC\") | .price | tonumber) * 0.4) * 100000000 | floor", "output": 2389480}
-                    ]
-
-    for tv in test_vectors:
-        res = process_json(tv["input"], tv["json_query"])
-        assert res == tv["output"]
+if __name__ == '__main__':
+    pytest.main()
