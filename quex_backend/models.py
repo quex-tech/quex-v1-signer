@@ -57,6 +57,18 @@ class RequestMethod(ABIEncodable):
         match method_str.upper():
             case "GET":
                 return RequestMethod(0)
+            case "POST":
+                return RequestMethod(1)
+            case "PUT":
+                return RequestMethod(2)
+            case "PATCH":
+                return RequestMethod(3)
+            case "DELETE":
+                return RequestMethod(4)
+            case "OPTIONS":
+                return RequestMethod(5)
+            case "TRACE":
+                return RequestMethod(6)
             case _:
                 raise Exception("Unknown method")
 
@@ -178,7 +190,7 @@ class HTTPRequest(ABIEncodable):
         parameters = [QueryParameter.parse(p) for p in data['parameters']]
 
         # Decode the base64-encoded JSON body if it exists
-        body = bytes()
+        body = base64.b64decode(data['body'])
 
         return HTTPRequest(
             method=method,
