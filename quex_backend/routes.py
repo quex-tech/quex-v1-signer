@@ -31,7 +31,7 @@ def query():
     print("\nGot response:" + json.dumps(d))
     jq = qr.filter
     processed_response = process_json(d, jq, qr.schema)
-    feed_id = compute_feed_id(qr)
+    feed_id = qr.feed_id()
     di = DataItem(
         timestamp=get_timestamp(),
         value=processed_response,

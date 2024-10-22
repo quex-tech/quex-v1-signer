@@ -221,6 +221,10 @@ class QuexRequest(ABIEncodable):
     def obj_schema() -> str:
         return f"({HTTPRequest.obj_schema()},{HTTPPrivatePatch.obj_schema()},string,string)"
 
+    def feed_id(self) -> bytes:
+        return keccak(self.bytes())
+
+
 
 #######################################
 # Data structures to provide response #
