@@ -2,7 +2,7 @@ import unittest
 
 import pytest
 
-from quex_backend.utils import *  # Adjust to your actual module path
+from quex_backend.utils import *
 
 
 class TestUtils(unittest.TestCase):

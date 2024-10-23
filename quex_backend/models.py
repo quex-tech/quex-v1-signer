@@ -2,10 +2,11 @@ import base64
 import dataclasses
 import json
 from base64 import b64encode
-from dataclasses import dataclass
-from enum import Enum
+from dataclasses import dataclass, astuple
+from enum import IntEnum
 from typing import List
 from urllib.parse import urljoin
+from abc import ABC, abstractmethod
 
 import eth_abi
 from eth_account import Account
@@ -26,24 +27,39 @@ def b64dict(obj):
 # Data structures for making requests #
 #######################################
 
-# Enum for RequestMethod
-class RequestMethod(Enum):
-    GET = "Get"
-    POST = "Post"
-    PUT = "Put"
-    PATCH = "Patch"
-    DELETE = "Delete"
-    OPTIONS = "Options"
-    TRACE = "Trace"
+# Define the parent abstract class
+class ABIEncodable(ABC):
 
     @staticmethod
-    def parse(method_str: str):
-        return RequestMethod[method_str.upper()]
+    @abstractmethod
+    def obj_schema() -> str:
+        """
+        Abstract static method for returning the schema as a string.
+        Must be implemented by subclasses.
+        """
+        pass
+
+    def bytes(self) -> bytes:
+        """
+        Default method to encode the object as bytes using the eth_abi library.
+        It uses the obj_schema() method and encodes the result of astuple(self).
+        """
+        return eth_abi.encode([self.obj_schema()], [astuple(self)])
+
+
+class RequestMethod(IntEnum):
+    GET = 0
+    POST = 1
+    PUT = 2
+    PATCH = 3
+    DELETE = 4
+    OPTIONS = 5
+    TRACE = 6
 
 
 # RequestHeader structure
 @dataclass
-class RequestHeader:
+class RequestHeader(ABIEncodable):
     key: str
     value: str
 
@@ -51,10 +67,14 @@ class RequestHeader:
     def parse(data: dict):
         return RequestHeader(**data)
 
+    @staticmethod
+    def obj_schema() -> str:
+        return f'(string,string)'
+
 
 # QueryParameter structure
 @dataclass
-class QueryParameter:
+class QueryParameter(ABIEncodable):
     key: str
     value: str
 
@@ -62,10 +82,14 @@ class QueryParameter:
     def parse(data: dict):
         return QueryParameter(**data)
 
+    @staticmethod
+    def obj_schema() -> str:
+        return f'(string,string)'
+
 
 # QueryParameterPatch structure (encrypted value in base64)
 @dataclass
-class QueryParameterPatch:
+class QueryParameterPatch(ABIEncodable):
     key: str
     ciphertext: bytes  # Encrypted value
 
@@ -76,10 +100,14 @@ class QueryParameterPatch:
             ciphertext=base64.b64decode(data['ciphertext'])  # Decode base64 string to bytes
         )
 
+    @staticmethod
+    def obj_schema() -> str:
+        return "(string,bytes)"
+
 
 # RequestHeaderPatch structure (encrypted value in base64)
 @dataclass
-class RequestHeaderPatch:
+class RequestHeaderPatch(ABIEncodable):
     key: str
     ciphertext: bytes  # Encrypted value
 
@@ -90,10 +118,14 @@ class RequestHeaderPatch:
             ciphertext=base64.b64decode(data['ciphertext'])  # Decode base64 string to bytes
         )
 
+    @staticmethod
+    def obj_schema() -> str:
+        return "(string,bytes)"
+
 
 # HTTPPrivatePatch structure
 @dataclass
-class HTTPPrivatePatch:
+class HTTPPrivatePatch(ABIEncodable):
     path_suffix: bytes
     headers: List[RequestHeaderPatch]
     parameters: List[QueryParameterPatch]
@@ -112,28 +144,33 @@ class HTTPPrivatePatch:
             td_id=data['td_id']
         )
 
+    @staticmethod
+    def obj_schema() -> str:
+        return f"(bytes,{RequestHeaderPatch.obj_schema()}[],{QueryParameterPatch.obj_schema()}[],bytes,uint256)"
+
 
 # HTTPRequest structure
 @dataclass
-class HTTPRequest:
+class HTTPRequest(ABIEncodable):
     method: RequestMethod
     host: str
     path: str
     headers: List[RequestHeader]
     parameters: List[QueryParameter]
-    body: dict  # JSON-decoded body, stored as a dictionary.
+    body: bytes
+
+    @staticmethod
+    def obj_schema() -> str:
+        return f'(uint8,string,string,{RequestHeader.obj_schema()}[],{QueryParameter.obj_schema()}[],bytes)'
 
     @staticmethod
     def parse(data: dict):
-        method = RequestMethod.parse(data['method'])
+        method = RequestMethod[data['method'].upper()]
         headers = [RequestHeader.parse(h) for h in data['headers']]
         parameters = [QueryParameter.parse(p) for p in data['parameters']]
 
         # Decode the base64-encoded JSON body if it exists
-        body = {}
-        if data.get('body'):  # Checking if 'body' exists and is not empty
-            body_json = base64.b64decode(data['body']).decode('utf-8')
-            body = json.loads(body_json)
+        body = base64.b64decode(data['body'])
 
         return HTTPRequest(
             method=method,
@@ -155,7 +192,7 @@ class HTTPRequest:
 
 # QuexRequest structure
 @dataclass
-class QuexRequest:
+class QuexRequest(ABIEncodable):
     request: HTTPRequest
     patch: HTTPPrivatePatch
     schema: str  # ResultSchema as a string for now
@@ -171,6 +208,13 @@ class QuexRequest:
             schema=data['schema'],
             filter=data['filter']
         )
+
+    @staticmethod
+    def obj_schema() -> str:
+        return f"({HTTPRequest.obj_schema()},{HTTPPrivatePatch.obj_schema()},string,string)"
+
+    def feed_id(self) -> bytes:
+        return keccak(self.bytes())
 
 
 #######################################

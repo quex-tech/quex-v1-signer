@@ -23,18 +23,6 @@ def get_timestamp() -> int:
     return round(response.tx_time)
 
 
-def compute_feed_id(data: QuexRequest) -> bytes:
-    """
-    Create feed id from request parameters
-
-    :param data: QuexRequest - data item
-    :return: hash from encoded data
-    """
-    # TODO correct serialization here, see https://github.com/quex-tech/quex-v1-signer/issues/3
-    msg_bytes = "".encode()
-    return keccak(msg_bytes)
-
-
 def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
     """
     Execute JQ program over the input data and encode the result according to the schema provided.

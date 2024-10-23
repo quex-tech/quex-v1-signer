@@ -24,14 +24,14 @@ def query():
     qr = QuexRequest.parse(data)
     qrr = qr.request
     url = qrr.build_url()
-    r = requests.request(qrr.method.value, url, params=qrr.parameters, headers=qrr.headers, data=qrr.body)
+    r = requests.request(qrr.method.string_value(), url, params=qrr.parameters, headers=qrr.headers, data=qrr.body)
     d = r.json()
 
     # Process response
     print("\nGot response:" + json.dumps(d))
     jq = qr.filter
     processed_response = process_json(d, jq, qr.schema)
-    feed_id = compute_feed_id(qr)
+    feed_id = qr.feed_id()
     di = DataItem(
         timestamp=get_timestamp(),
         value=processed_response,
