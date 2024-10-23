@@ -47,30 +47,36 @@ class ABIEncodable(ABC):
         return eth_abi.encode([self.obj_schema()], [astuple(self)])
 
 
-# Enum for RequestMethod
 @dataclass
 class RequestMethod(ABIEncodable):
     value: int
 
+    _mapping = {
+        "GET": 0,
+        "POST": 1,
+        "PUT": 2,
+        "PATCH": 3,
+        "DELETE": 4,
+        "OPTIONS": 5,
+        "TRACE": 6
+    }
+
+    # Create the reverse mapping from int to string
+    _reverse_mapping = {v: k for k, v in _mapping.items()}
+
+    def string_value(self) -> str:
+        # Use _reverse_mapping to get the string corresponding to the integer value
+        if self.value in RequestMethod._reverse_mapping:
+            return RequestMethod._reverse_mapping[self.value]
+        else:
+            raise Exception("Unknown value")
+
     @staticmethod
     def parse(method_str: str):
-        match method_str.upper():
-            case "GET":
-                return RequestMethod(0)
-            case "POST":
-                return RequestMethod(1)
-            case "PUT":
-                return RequestMethod(2)
-            case "PATCH":
-                return RequestMethod(3)
-            case "DELETE":
-                return RequestMethod(4)
-            case "OPTIONS":
-                return RequestMethod(5)
-            case "TRACE":
-                return RequestMethod(6)
-            case _:
-                raise Exception("Unknown method")
+        if method_str.upper() not in RequestMethod._mapping:
+            raise Exception(f"Unknown method: {method_str}")
+        int_value = RequestMethod._mapping[method_str.upper()]
+        return RequestMethod(int_value)
 
     @staticmethod
     def obj_schema() -> str:
@@ -235,7 +241,6 @@ class QuexRequest(ABIEncodable):
 
     def feed_id(self) -> bytes:
         return keccak(self.bytes())
-
 
 
 #######################################
