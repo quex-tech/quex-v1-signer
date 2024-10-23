@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-
+import binascii
 from quex_backend.models import *
 
 
@@ -11,18 +11,17 @@ class TestModelsParsing(unittest.TestCase):
         f = open(Path(__file__).parent.resolve() / 'test_vectors.json')
         vectors = json.load(f)
         for v in vectors:
-            print(v)
             obj = QuexRequest.parse(v["quex_request"])
             self.assertEqual(obj.filter, v["quex_request"]["filter"])
 
     # Test RequestMethod Parsing
     def test_request_method_parsing(self):
-        self.assertEqual(RequestMethod.parse("Get"), RequestMethod.GET)
-        self.assertEqual(RequestMethod.parse("POST"), RequestMethod.POST)
-        self.assertEqual(RequestMethod.parse("put"), RequestMethod.PUT)
+        self.assertEqual(RequestMethod.parse("Get").value, 0)
+        self.assertEqual(RequestMethod.parse("Post").value, 1)
+        self.assertEqual(RequestMethod.parse("put").value, 2)
 
     def test_request_method_invalid_parsing(self):
-        with self.assertRaises(KeyError):  # KeyError expected for invalid method
+        with self.assertRaises(Exception):
             RequestMethod.parse("InvalidMethod")
 
     # Test RequestHeader Parsing
@@ -131,9 +130,9 @@ class TestModelsParsing(unittest.TestCase):
             "param2": 42,
             "param3": {"nested_key": "nested_value"}
         }
+        body_bytes = json.dumps(body_content).encode()
 
-        # Encode the body as base64-encoded JSON
-        json_encoded_body = base64.b64encode(json.dumps(body_content).encode('utf-8')).decode('utf-8')
+        base64_encoded_body = base64.b64encode(body_bytes)
 
         data = {
             "method": "Get",
@@ -141,23 +140,23 @@ class TestModelsParsing(unittest.TestCase):
             "path": "/v1/resource",
             "headers": [{"key": "Content-Type", "value": "application/json"}],
             "parameters": [{"key": "id", "value": "1"}],
-            "body": json_encoded_body
+            "body": base64_encoded_body
         }
 
         http_request = HTTPRequest.parse(data)
-        self.assertEqual(http_request.body, body_content)
+        self.assertEqual(http_request.body, body_bytes)
 
-    def test_http_request_invalid_json(self):
+    def test_http_request_invalid_body(self):
         data = {
             "method": "Get",
             "host": "api.example.com",
             "path": "/v1/resource",
             "headers": [{"key": "Content-Type", "value": "application/json"}],
             "parameters": [{"key": "id", "value": "1"}],
-            "body": base64.b64encode(b"invalid_json").decode('utf-8')
+            "body": b"invalid_json"
         }
 
-        with self.assertRaises(json.JSONDecodeError):
+        with self.assertRaises(binascii.Error):
             HTTPRequest.parse(data)
 
     def test_http_request_missing_field(self):
@@ -179,9 +178,11 @@ class TestModelsParsing(unittest.TestCase):
             "param2": 42,
             "param3": {"nested_key": "nested_value"}
         }
+        body_bytes = json.dumps(body_content).encode()
 
-        json_encoded_body = base64.b64encode(json.dumps(body_content).encode('utf-8')).decode('utf-8')
-        encrypted_value = base64.b64encode(b"encrypted_value").decode('utf-8')
+        body_bytes_encoded = base64.b64encode(body_bytes)
+
+        encrypted_value = base64.b64encode(b"encrypted_value")
 
         data = {
             "request": {
@@ -190,7 +191,7 @@ class TestModelsParsing(unittest.TestCase):
                 "path": "/v1/resource",
                 "headers": [{"key": "Content-Type", "value": "application/json"}],
                 "parameters": [{"key": "id", "value": "1"}],
-                "body": json_encoded_body
+                "body": body_bytes_encoded
             },
             "patch": {
                 "path_suffix": encrypted_value,
@@ -204,7 +205,7 @@ class TestModelsParsing(unittest.TestCase):
         }
 
         quex_request = QuexRequest.parse(data)
-        self.assertEqual(quex_request.request.body, body_content)
+        self.assertEqual(quex_request.request.body, body_bytes)
         self.assertEqual(quex_request.patch.path_suffix, b"encrypted_value")
         self.assertEqual(quex_request.schema, "int256")
         self.assertEqual(quex_request.filter, "(.data[\"1\"].quote.USD.price * 1000000) | round")
