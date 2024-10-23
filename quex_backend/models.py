@@ -3,7 +3,7 @@ import dataclasses
 import json
 from base64 import b64encode
 from dataclasses import dataclass, astuple
-from enum import Enum
+from enum import IntEnum
 from typing import List
 from urllib.parse import urljoin
 from abc import ABC, abstractmethod
@@ -47,40 +47,14 @@ class ABIEncodable(ABC):
         return eth_abi.encode([self.obj_schema()], [astuple(self)])
 
 
-@dataclass
-class RequestMethod(ABIEncodable):
-    value: int
-
-    _mapping = {
-        "GET": 0,
-        "POST": 1,
-        "PUT": 2,
-        "PATCH": 3,
-        "DELETE": 4,
-        "OPTIONS": 5,
-        "TRACE": 6
-    }
-
-    # Create the reverse mapping from int to string
-    _reverse_mapping = {v: k for k, v in _mapping.items()}
-
-    def string_value(self) -> str:
-        # Use _reverse_mapping to get the string corresponding to the integer value
-        if self.value in RequestMethod._reverse_mapping:
-            return RequestMethod._reverse_mapping[self.value]
-        else:
-            raise Exception("Unknown value")
-
-    @staticmethod
-    def parse(method_str: str):
-        if method_str.upper() not in RequestMethod._mapping:
-            raise Exception(f"Unknown method: {method_str}")
-        int_value = RequestMethod._mapping[method_str.upper()]
-        return RequestMethod(int_value)
-
-    @staticmethod
-    def obj_schema() -> str:
-        return f'(uint8)'
+class RequestMethod(IntEnum):
+    GET = 0
+    POST = 1
+    PUT = 2
+    PATCH = 3
+    DELETE = 4
+    OPTIONS = 5
+    TRACE = 6
 
 
 # RequestHeader structure
@@ -187,11 +161,11 @@ class HTTPRequest(ABIEncodable):
 
     @staticmethod
     def obj_schema() -> str:
-        return f'({RequestMethod.obj_schema()},string,string,{RequestHeader.obj_schema()}[],{QueryParameter.obj_schema()}[],bytes)'
+        return f'(uint8,string,string,{RequestHeader.obj_schema()}[],{QueryParameter.obj_schema()}[],bytes)'
 
     @staticmethod
     def parse(data: dict):
-        method = RequestMethod.parse(data['method'])
+        method = RequestMethod[data['method'].upper()]
         headers = [RequestHeader.parse(h) for h in data['headers']]
         parameters = [QueryParameter.parse(p) for p in data['parameters']]
 
