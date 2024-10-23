@@ -16,9 +16,9 @@ class TestModelsParsing(unittest.TestCase):
 
     # Test RequestMethod Parsing
     def test_request_method_parsing(self):
-        self.assertEqual(RequestMethod.parse("Get").value, 0)
-        self.assertEqual(RequestMethod.parse("Post").value, 1)
-        self.assertEqual(RequestMethod.parse("put").value, 2)
+        self.assertEqual(RequestMethod["GET"], 0)
+        self.assertEqual(RequestMethod["POST"], 1)
+        self.assertEqual(RequestMethod["PUT"], 2)
 
     def test_request_method_invalid_parsing(self):
         with self.assertRaises(Exception):
