@@ -22,13 +22,9 @@ def query():
     data = request.get_json()
     print("\n Got request with data:" + str(data))
     qr = QuexRequest.parse(data)
-    qrr = qr.request
-    url = qrr.build_url()
-    r = requests.request(qrr.method.string_value(), url, params=qrr.parameters, headers=qrr.headers, data=qrr.body)
-    d = r.json()
+    d = make_request(qr.request)
 
     # Process response
-    print("\nGot response:" + json.dumps(d))
     jq = qr.filter
     processed_response = process_json(d, jq, qr.schema)
     feed_id = qr.feed_id()
