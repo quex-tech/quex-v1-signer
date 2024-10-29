@@ -27,7 +27,7 @@ class TestUtils(unittest.TestCase):
     test_vectors = [
         # correct requests
         TestVector("www.binance.com", "/api/v3/ticker/price", ""),
-        TestVector("dh2048.badssl.com", "", ""),
+
         # TLS errors
         # Certificate section
         TestVector("expired.badssl.com/", "", "certificate has expired"),
@@ -37,6 +37,7 @@ class TestUtils(unittest.TestCase):
         TestVector("no-subject.badssl.com/", "", "certificate has expired"),
         TestVector("no-common-name.badssl.com", "", "certificate has expired"),
         TestVector("incomplete-chain.badssl.com", "", "CERTIFICATE_VERIFY_FAILED"),
+
         # Key Exchange
         TestVector("dh480.badssl.com", "", "BAD_DH_VALUE"),
         TestVector("dh512.badssl.com", "", "DH_KEY_TOO_SMALL"),
@@ -87,6 +88,7 @@ class TestUtils(unittest.TestCase):
         TestVector("pinning-test.badssl.com", "", "???"),
 
         # Key Exchange
+        TestVector("dh2048.badssl.com", "", "???"),
         TestVector("dh-small-subgroup.badssl.com", "", "???"),
         TestVector("dh-composite.badssl.com", "", "???"),
 
