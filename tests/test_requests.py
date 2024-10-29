@@ -2,8 +2,8 @@ import unittest
 
 import pytest
 
-from quex_backend.utils import *
 from quex_backend.models import *
+from quex_backend.utils import *
 
 
 @dataclass
@@ -41,8 +41,6 @@ class TestRequests(unittest.TestCase):
         TestVector("longextendedsubdomainnamewithoutdashesinordertotestwordwrapping.badssl.com/"),
         TestVector("mozilla-modern.badssl.com/"),
     ]
-
-
 
     # Weak certificates, that should not be accepted, but requests passes
     failing_vectors = [
@@ -153,11 +151,11 @@ class TestRequests(unittest.TestCase):
 
         # Check the parameters
         mock_request.assert_called_once_with(
-            "GET",  # method
-            "https://api.example.com/v1/resource",  # url
-            params={"id": "1"},  # parameters
-            headers={"Content-Type": "application/json"},  # headers
-            data=body_content,  # body
+            "GET",
+            "https://api.example.com/v1/resource",
+            params={"id": "1"},
+            headers={"Content-Type": "application/json"},
+            data=body_bytes,
             verify=True,
             allow_redirects=False
         )

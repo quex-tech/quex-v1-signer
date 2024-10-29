@@ -205,7 +205,7 @@ class HTTPRequest(ABIEncodable):
         return headers
 
     def get_body(self):
-        return json.loads(self.body.decode())
+        return self.body
 
 
 # QuexRequest structure
