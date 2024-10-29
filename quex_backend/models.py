@@ -56,6 +56,9 @@ class RequestMethod(IntEnum):
     OPTIONS = 5
     TRACE = 6
 
+    def string_value(self) -> str:
+        return self.name
+
 
 # RequestHeader structure
 @dataclass

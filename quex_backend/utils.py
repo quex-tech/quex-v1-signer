@@ -2,11 +2,12 @@ from typing import Mapping
 
 import eth_abi
 import jq
+import json
 import ntplib
-from eth_utils import keccak
+import requests
 
 from quex_backend import cmc_api_key
-from quex_backend.models import QuexRequest
+from quex_backend.models import HTTPRequest
 
 c = ntplib.NTPClient()
 
@@ -53,3 +54,19 @@ def get_headers(url: str) -> Mapping[str, str]:
         return {
             'X-CMC_PRO_API_KEY': cmc_api_key,
         }
+
+
+def make_request(qrr: HTTPRequest, as_json: bool = True):
+    url = qrr.build_url()
+    print(f"!! {url}")
+
+    r = requests.request(qrr.method.string_value(), url, params=qrr.parameters, headers=qrr.headers, data=qrr.body,
+                         verify=True, allow_redirects=False)
+    # print("\nGot response:" + r.text)
+    if r.status_code != 200:
+        raise ValueError(f"Got status code {r.status_code} for request ${qrr}")
+
+    if as_json:
+        return r.json()
+    else:
+        return r.text
