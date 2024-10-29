@@ -72,7 +72,6 @@ class SSLAdapter(HTTPAdapter):
 
 def make_request(qrr: HTTPRequest, as_json: bool = True):
     url = qrr.build_url()
-    print(f"!! {url}")
 
     cipher_list = "ECDHE+AESGCM:ECDHE+CHACHA20"
 
@@ -80,8 +79,8 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     context = ssl.create_default_context()
     context.set_ciphers(cipher_list)  # Apply the modern cipher list
 
-    # Disable older TLS versions (TLS 1.0 and 1.1)
-    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_RENEGOTIATION
+    # Disable older TLS versions
+    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
 
     # Use the SSLAdapter to set the context in requests
     session = requests.Session()
