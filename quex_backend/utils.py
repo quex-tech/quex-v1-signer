@@ -5,6 +5,9 @@ import jq
 import json
 import ntplib
 import requests
+import ssl
+from requests.adapters import HTTPAdapter
+from urllib3.poolmanager import PoolManager
 
 from quex_backend import cmc_api_key
 from quex_backend.models import HTTPRequest
@@ -56,13 +59,42 @@ def get_headers(url: str) -> Mapping[str, str]:
         }
 
 
+class SSLAdapter(HTTPAdapter):
+    def __init__(self, ssl_context=None, **kwargs):
+        self.ssl_context = ssl_context
+        super().__init__(**kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs['ssl_context'] = self.ssl_context
+        return super().init_poolmanager(*args, **kwargs)
+
+
 def make_request(qrr: HTTPRequest, as_json: bool = True):
     url = qrr.build_url()
     print(f"!! {url}")
 
-    r = requests.request(qrr.method.string_value(), url, params=qrr.parameters, headers=qrr.headers, data=qrr.body,
-                         verify=True, allow_redirects=False)
-    # print("\nGot response:" + r.text)
+    cipher_list = "ECDHE+AESGCM:ECDHE+CHACHA20"
+
+    # Create a custom SSL context
+    context = ssl.create_default_context()
+    context.set_ciphers(cipher_list)  # Apply the modern cipher list
+
+    # Disable older TLS versions (TLS 1.0 and 1.1)
+    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_RENEGOTIATION
+
+    # Use the SSLAdapter to set the context in requests
+    session = requests.Session()
+    session.mount('https://', SSLAdapter(ssl_context=context))
+
+    r = session.request(qrr.method.string_value(),
+                        url,
+                        params=qrr.get_parameters(),
+                        headers=qrr.get_headers(),
+                        data=qrr.get_body(),
+                        verify=True,
+                        allow_redirects=False
+                        )
+
     if r.status_code != 200:
         raise ValueError(f"Got status code {r.status_code} for request ${qrr}")
 
