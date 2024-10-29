@@ -23,7 +23,7 @@ class TestVector:
         )
 
 
-class TestUtils(unittest.TestCase):
+class TestRequests(unittest.TestCase):
     # Correct requests that should pass without errors
     correct_requests = [
         TestVector("sha256.badssl.com/"),
@@ -123,11 +123,53 @@ class TestUtils(unittest.TestCase):
 
     ]
 
-    def test_correct_vectors(self):
+    @patch("requests.Session.request")
+    def test_make_request(self, mock_request):
+        # Setup
+        body_content = {
+            "param1": "value1",
+            "param2": 42,
+            "param3": {"nested_key": "nested_value"}
+        }
+        body_bytes = json.dumps(body_content).encode()
+        base64_encoded_body = base64.b64encode(body_bytes)
+
+        data = {
+            "method": "Get",
+            "host": "api.example.com",
+            "path": "/v1/resource",
+            "headers": [{"key": "Content-Type", "value": "application/json"}],
+            "parameters": [{"key": "id", "value": "1"}],
+            "body": base64_encoded_body.decode()
+        }
+        http_request = HTTPRequest.parse(data)
+
+        # Mock response
+        mock_request.return_value.status_code = 200
+        mock_request.return_value.json.return_value = {"key": "value"}
+
+        # Call the function
+        response = make_request(http_request, as_json=True)
+
+        # Check the parameters
+        mock_request.assert_called_once_with(
+            "GET",  # method
+            "https://api.example.com/v1/resource",  # url
+            params={"id": "1"},  # parameters
+            headers={"Content-Type": "application/json"},  # headers
+            data=body_content,  # body
+            verify=True,
+            allow_redirects=False
+        )
+
+        # Check the response
+        self.assertEqual(response, {"key": "value"})
+
+    def test_correct_certificates(self):
         for v in self.correct_requests:
             self.check_test_vector(v)
 
-    def test_failing_vectors(self):
+    def test_failing_certificates(self):
         for v in self.failing_vectors:
             self.check_test_vector(v)
 

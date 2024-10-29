@@ -192,14 +192,20 @@ class HTTPRequest(ABIEncodable):
         # Use urljoin to properly concatenate host and path
         return urljoin(host, self.path)
 
-    def get_parameters(self) :
-        pass
+    def get_parameters(self):
+        params = {}
+        for p in self.parameters:
+            params[p.key] = p.value
+        return params
 
-    def get_headers(self) :
-        pass
+    def get_headers(self):
+        headers = {}
+        for p in self.headers:
+            headers[p.key] = p.value
+        return headers
 
-    def get_body(self) :
-        pass
+    def get_body(self):
+        return json.loads(self.body.decode())
 
 
 # QuexRequest structure

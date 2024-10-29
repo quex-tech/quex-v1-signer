@@ -11,6 +11,7 @@ from urllib3.poolmanager import PoolManager
 
 from quex_backend import cmc_api_key
 from quex_backend.models import HTTPRequest
+from unittest.mock import patch
 
 c = ntplib.NTPClient()
 
