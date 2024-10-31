@@ -14,12 +14,10 @@ test_vectors = [
     },
 ]
 PRIVATE_KEY_HEX = "0x73e44e67ae68ffade8b2d555c92599e7cc310ec152202fb6c20abfd12ec2529"
-private_key = ec.derive_private_key(int(PRIVATE_KEY_HEX, 16), ec.SECP256K1(), default_backend())
-
 
 def test_encryption_decryption():
     for v in test_vectors:
-        server = Server(private_key)
+        server = Server.from_hex(PRIVATE_KEY_HEX)
         public_key = server.get_public_key()
 
         # Client encrypts the message with the server's public key
@@ -36,7 +34,7 @@ def test_encryption_decryption():
 
 def test_decryption():
     for v in test_vectors:
-        server = Server(private_key)
+        server = Server.from_hex(PRIVATE_KEY_HEX)
         message = v["message"]
         encrypted_message = bytes.fromhex(v["ciphertext_hex"])
         decrypted_message = server.decrypt_message(encrypted_message)
