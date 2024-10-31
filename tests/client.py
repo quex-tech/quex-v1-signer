@@ -1,14 +1,12 @@
-from copy import deepcopy
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from quex_backend.models import *
 import os
 
-# Client code that encrypt messages for private patch
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+
 class Client:
     def __init__(self, server_public_key_bytes: bytes):
         x = int.from_bytes(server_public_key_bytes[1:33], "big")
@@ -19,25 +17,16 @@ class Client:
     def encrypt_message(self, message: bytes) -> bytes:
         ephemeral_private_key = ec.generate_private_key(ec.SECP256K1(), default_backend())
         ephemeral_public_key = ephemeral_private_key.public_key()
-
-        # Get the x and y coordinates of the ephemeral public key
         ephemeral_x = ephemeral_public_key.public_numbers().x.to_bytes(32, "big")
         ephemeral_y = ephemeral_public_key.public_numbers().y.to_bytes(32, "big")
+        ephemeral = ephemeral_x + ephemeral_y
 
-        # Derive the shared secret using the server's public key
         shared_key = ephemeral_private_key.exchange(ec.ECDH(), self.server_public_key)
-        server_public_numbers = self.server_public_key.public_numbers()
 
-        # HKDF input with 0x04 prefixes
-        hkdf_input = (
-                b'\x04' +
-                ephemeral_x +
-                ephemeral_y +
-                b'\x04' +
-                server_public_numbers.x.to_bytes(32, "big") +
-                server_public_numbers.y.to_bytes(32, "big")
-        )
+        # HKDF input with 0x04 prefixes, using R_x and R_y
+        hkdf_input = (b'\x04' + ephemeral + b'\x04' + shared_key)
 
+        # Derive the symmetric key using HKDF
         symm_key = HKDF(
             algorithm=hashes.SHA256(),
             length=32,
@@ -56,4 +45,4 @@ class Client:
         ciphertext = encryptor.update(message) + encryptor.finalize()
 
         # Concatenate ephemeral public key, nonce, tag, and ciphertext
-        return ephemeral_x + ephemeral_y + nonce + encryptor.tag + ciphertext
+        return ephemeral + nonce + encryptor.tag + ciphertext

@@ -22,18 +22,24 @@ class EncryptedPatchProcessor:
         return self.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
 
     def decrypt_message(self, encrypted_data: bytes) -> bytes:
-        ephemeral_x = encrypted_data[:32]
-        ephemeral_y = encrypted_data[32:64]
+        ephemeral = encrypted_data[:64]
         nonce = encrypted_data[64:80]
         tag = encrypted_data[80:96]
         ciphertext = encrypted_data[96:]
-        server_public_numbers = self.__private_key.public_key().public_numbers()
 
-        # HKDF input with 0x04 prefixes
-        hkdf_input = (
-                b'\x04' + ephemeral_x + ephemeral_y +
-                b'\x04' + server_public_numbers.x.to_bytes(32, "big") + server_public_numbers.y.to_bytes(32, "big")
+        # Reconstruct the ephemeral public key
+        ephemeral_public_numbers = ec.EllipticCurvePublicNumbers(
+            int.from_bytes(ephemeral[:32], "big"),
+            int.from_bytes(ephemeral[32:64], "big"),
+            ec.SECP256K1()
         )
+        ephemeral_public_key = ephemeral_public_numbers.public_key(default_backend())
+
+        # Perform Diffie-Hellman exchange to obtain the shared secret point
+        shared_key = self.__private_key.exchange(ec.ECDH(), ephemeral_public_key)
+
+        # HKDF input with 0x04 prefixes, using R_x and R_y
+        hkdf_input = (b'\x04' + ephemeral + b'\x04' + shared_key)
 
         symm_key = HKDF(
             algorithm=hashes.SHA256(),
@@ -81,5 +87,3 @@ class EncryptedPatchProcessor:
             http_request.path += decrypted_path_suffix.decode('utf-8')
 
         return http_request
-
-
