@@ -2,7 +2,6 @@ import unittest
 from pathlib import Path
 
 from quex_backend.models import *
-from quex_backend.utils import *
 
 
 class TestModelsEncoding(unittest.TestCase):

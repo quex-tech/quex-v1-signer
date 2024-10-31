@@ -27,18 +27,6 @@ class EncryptedPatchProcessor:
         nonce = encrypted_data[64:80]
         tag = encrypted_data[80:96]
         ciphertext = encrypted_data[96:]
-
-        # Reconstruct ephemeral public key
-        ephemeral_public_numbers = ec.EllipticCurvePublicNumbers(
-            int.from_bytes(ephemeral_x, "big"),
-            int.from_bytes(ephemeral_y, "big"),
-            ec.SECP256K1()
-        )
-        ephemeral_public_key = ephemeral_public_numbers.public_key(default_backend())
-
-        # Derive the shared secret
-        shared_key = self.__private_key.exchange(ec.ECDH(), ephemeral_public_key)
-        shared_public_numbers = ephemeral_public_key.public_numbers()
         server_public_numbers = self.__private_key.public_key().public_numbers()
 
         # HKDF input with 0x04 prefixes
