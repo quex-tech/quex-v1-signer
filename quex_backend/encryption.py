@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 import os
 
 
-class Server:
+class EncryptedPatchProcessor:
     def __init__(self, private_key: ec.EllipticCurvePrivateKey):
         self.__private_key = private_key
         self.public_key = self.__private_key.public_key()
@@ -15,7 +15,7 @@ class Server:
     @staticmethod
     def from_hex(private_key_hex):
         private_key = ec.derive_private_key(int(private_key_hex, 16), ec.SECP256K1(), default_backend())
-        return Server(private_key)
+        return EncryptedPatchProcessor(private_key)
 
     def get_public_key(self) -> bytes:
         return self.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)

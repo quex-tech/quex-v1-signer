@@ -1,6 +1,6 @@
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
-from quex_backend.encryption import Server, Client
+from quex_backend.encryption import EncryptedPatchProcessor, Client
 from cryptography.hazmat.backends import default_backend
 
 test_vectors = [
@@ -17,7 +17,7 @@ PRIVATE_KEY_HEX = "0x73e44e67ae68ffade8b2d555c92599e7cc310ec152202fb6c20abfd12ec
 
 def test_encryption_decryption():
     for v in test_vectors:
-        server = Server.from_hex(PRIVATE_KEY_HEX)
+        server = EncryptedPatchProcessor.from_hex(PRIVATE_KEY_HEX)
         public_key = server.get_public_key()
 
         # Client encrypts the message with the server's public key
@@ -34,7 +34,7 @@ def test_encryption_decryption():
 
 def test_decryption():
     for v in test_vectors:
-        server = Server.from_hex(PRIVATE_KEY_HEX)
+        server = EncryptedPatchProcessor.from_hex(PRIVATE_KEY_HEX)
         message = v["message"]
         encrypted_message = bytes.fromhex(v["ciphertext_hex"])
         decrypted_message = server.decrypt_message(encrypted_message)
