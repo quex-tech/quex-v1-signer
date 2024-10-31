@@ -23,7 +23,6 @@ else:
 
 account = Account.from_key(os.environ.get("ETH_SIGNER_KEY"))
 patch_processor = EncryptedPatchProcessor.from_hex(os.environ.get("PATCH_PROCESSOR_KEY"))
-cmc_api_key = os.environ.get("COINMARKETCAP_API_KEY")
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)

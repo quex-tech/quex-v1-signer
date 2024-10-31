@@ -1,17 +1,12 @@
-from typing import Mapping
+import ssl
 
 import eth_abi
 import jq
-import json
 import ntplib
 import requests
-import ssl
 from requests.adapters import HTTPAdapter
-from urllib3.poolmanager import PoolManager
 
-from quex_backend import cmc_api_key
 from quex_backend.models import HTTPRequest
-from unittest.mock import patch
 
 c = ntplib.NTPClient()
 
@@ -39,25 +34,6 @@ def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
     encoded = eth_abi.encode([schema], [result])
 
     return encoded
-
-
-def get_headers(url: str) -> Mapping[str, str]:
-    """
-    Get headers based on current url
-    TODO implement generic logic, allowing set up and extract headers to any web sources
-
-    :param url:
-    :return:
-    """
-    if url.startswith("https://pro-api.coinmarketcap.com"):
-        return {
-            'Accepts': 'application/json',
-            'X-CMC_PRO_API_KEY': cmc_api_key,
-        }
-    else:
-        return {
-            'X-CMC_PRO_API_KEY': cmc_api_key,
-        }
 
 
 class SSLAdapter(HTTPAdapter):
