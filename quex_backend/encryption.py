@@ -4,6 +4,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from quex_backend.models import *
 import os
 
 
@@ -61,6 +62,37 @@ class EncryptedPatchProcessor:
             backend=default_backend()
         ).decryptor()
         return decryptor.update(ciphertext) + decryptor.finalize()
+
+    def apply_patch(self, quex_request) -> 'HTTPRequest':
+        """
+        Apply the HTTPPrivatePatch to the HTTPRequest within the QuexRequest,
+        decrypting any encrypted fields and updating the HTTPRequest.
+        """
+        # Get the HTTPRequest and HTTPPrivatePatch from the QuexRequest
+        http_request = quex_request.request
+        http_patch = quex_request.patch
+
+        # Decrypt any encrypted headers and apply
+        for header_patch in http_patch.headers:
+            decrypted_value = self.decrypt_message(header_patch.ciphertext)
+            http_request.headers.append(RequestHeader(header_patch.key, decrypted_value.decode('utf-8')))
+
+        # Decrypt any encrypted parameters
+        for param_patch in http_patch.parameters:
+            decrypted_value = self.decrypt_message(param_patch.ciphertext)
+            http_request.parameters.append(QueryParameter(param_patch.key, decrypted_value.decode('utf-8')))
+
+        # Decrypt the body if it is encrypted
+        if http_patch.body:
+            decrypted_body = self.decrypt_message(http_patch.body)
+            http_request.body = decrypted_body
+
+        # Update the path with path_suffix if provided
+        if http_patch.path_suffix:
+            decrypted_path_suffix = self.decrypt_message(http_patch.path_suffix)
+            http_request.path += decrypted_path_suffix.decode('utf-8')
+
+        return http_request
 
 
 class Client:

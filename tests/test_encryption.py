@@ -1,6 +1,7 @@
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
 from quex_backend.encryption import EncryptedPatchProcessor, Client
+from quex_backend.models import *
 from cryptography.hazmat.backends import default_backend
 
 test_vectors = [
@@ -40,3 +41,58 @@ def test_decryption():
         decrypted_message = server.decrypt_message(encrypted_message)
 
         assert decrypted_message == message
+
+def test_apply_patch():
+    # Generate server key for decryption
+    private_key = ec.generate_private_key(ec.SECP256K1(), default_backend())
+    server = EncryptedPatchProcessor(private_key)
+    public_key = server.get_public_key()
+
+    # Set up client with server's public key
+    client = Client(public_key)
+
+    # Define the original HTTPRequest
+    http_request = HTTPRequest(
+        method="GET",
+        host="api.example.com",
+        path="/v1/resource",
+        headers=[RequestHeader("Accept", "application/json")],
+        parameters=[{"key": "id", "value": "1"}],
+        body=b""
+    )
+
+    # Encrypt an API key for testing
+    api_key = b"my_secret_api_key"
+    encrypted_api_key = client.encrypt_message(api_key)
+
+    # Create HTTPPrivatePatch with encrypted API key
+    http_private_patch = HTTPPrivatePatch(
+        path_suffix=b"",
+        headers=[RequestHeaderPatch("X-API-KEY", encrypted_api_key)],
+        parameters=[],
+        body=b"",
+        td_id=1
+    )
+
+    # Create the QuexRequest
+    quex_request = QuexRequest(
+        request=http_request,
+        patch=http_private_patch,
+        schema="string",
+        filter=""
+    )
+
+    # Apply the patch to the request
+    patched_request = server.apply_patch(quex_request)
+
+    # Assert that patched request contains the decrypted API key
+    patched_headers = patched_request.get_headers()
+
+    decrypted_api_key = patched_headers["X-API-KEY"]
+    assert decrypted_api_key == api_key.decode()
+
+    # Verify other request properties remain unchanged
+    assert patched_request.method == http_request.method
+    assert patched_request.host == http_request.host
+    assert patched_request.path == http_request.path
+    assert patched_request.parameters == http_request.parameters

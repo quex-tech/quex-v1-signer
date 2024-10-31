@@ -22,7 +22,7 @@ else:
     from pyquex_tdx import get_quote
 
 account = Account.from_key(os.environ.get("ETH_SIGNER_KEY"))
-server = EncryptedPatchProcessor.from_hex(os.environ.get("PATCH_PROCESSOR_KEY"))
+patch_processor = EncryptedPatchProcessor.from_hex(os.environ.get("PATCH_PROCESSOR_KEY"))
 cmc_api_key = os.environ.get("COINMARKETCAP_API_KEY")
 
 def create_app():

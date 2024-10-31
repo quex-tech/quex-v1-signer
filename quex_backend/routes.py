@@ -1,7 +1,7 @@
 import requests
 from flask import Blueprint, request
 
-from quex_backend import account, get_quote
+from quex_backend import account, get_quote, patch_processor
 from quex_backend.models import *
 from quex_backend.td_quote import TDQuote
 from quex_backend.utils import *
@@ -22,7 +22,8 @@ def query():
     data = request.get_json()
     print("\n Got request with data:" + str(data))
     qr = QuexRequest.parse(data)
-    d = make_request(qr.request)
+    patched_http_request = patch_processor.apply_patch(qr)
+    d = make_request(patched_http_request)
 
     # Process response
     jq = qr.filter
