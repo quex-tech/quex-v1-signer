@@ -23,7 +23,7 @@ class TestModelsEncoding(unittest.TestCase):
             "ciphertext_hex": "7c60e54d0ca1fed95a49e718bf75900cfbf2f482596b5cc0325a8c8b309c244156db3a18aaa7bc23ccd436a1555b307cc29b1d89c6105951e13d745b108d809cf33f032b187720a0c2ac37f956b127b397486ec614a3ae615fb9e787bd1d9ed0f52eb541b9cefdd2167325eaf7251278ae2b3a46a275088bbdf266b6a43cd7c6ec54a9c76d0c0e4b541a1c4e4c91dd67"
         },
     ]
-    PRIVATE_KEY_HEX = "0x73e44e67ae68ffade8b2d555c92599e7cc310ec152202fb6c20abfd12ec2529"
+    PRIVATE_KEY_HEX = "0x123456789abcdef"
     patch_processor = EncryptedPatchProcessor.from_hex(PRIVATE_KEY_HEX)
 
     def test_encryption_decryption(self):

@@ -1,25 +1,26 @@
 from copy import deepcopy
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+from Crypto.Protocol.KDF import HKDF
+from ecdsa import SECP256k1, SigningKey, VerifyingKey
+from ecdsa.util import number_to_string
+
 from quex_backend.models import *
 
 
 class EncryptedPatchProcessor:
-    def __init__(self, private_key: ec.EllipticCurvePrivateKey):
+    def __init__(self, private_key: SigningKey):
         self.__private_key = private_key
-        self.public_key = self.__private_key.public_key()
+        self.public_key = private_key.get_verifying_key()
 
     @staticmethod
-    def from_hex(private_key_hex):
-        private_key = ec.derive_private_key(int(private_key_hex, 16), ec.SECP256K1(), default_backend())
+    def from_hex(private_key_hex: str):
+        private_key = SigningKey.from_secret_exponent(int(private_key_hex, 16), curve=SECP256k1)
         return EncryptedPatchProcessor(private_key)
 
-    def get_public_key(self) -> bytes:
-        return self.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+    def get_public_key(self) -> VerifyingKey:
+        return self.public_key
 
     def decrypt_message(self, encrypted_data: bytes) -> bytes:
         ephemeral = encrypted_data[:64]
@@ -27,35 +28,22 @@ class EncryptedPatchProcessor:
         tag = encrypted_data[80:96]
         ciphertext = encrypted_data[96:]
 
-        # Reconstruct the ephemeral public key
-        ephemeral_public_numbers = ec.EllipticCurvePublicNumbers(
-            int.from_bytes(ephemeral[:32], "big"),
-            int.from_bytes(ephemeral[32:64], "big"),
-            ec.SECP256K1()
-        )
-        ephemeral_public_key = ephemeral_public_numbers.public_key(default_backend())
+        # Perform ECDH to obtain the shared secret point
+        ephemeral_public_key = VerifyingKey.from_string(ephemeral, curve=SECP256k1)
+        shared_point = ephemeral_public_key.pubkey.point * self.__private_key.privkey.secret_multiplier
+        shared_x = number_to_string(shared_point.x(), SECP256k1.order)
+        shared_y = number_to_string(shared_point.y(), SECP256k1.order)
+        shared_key = b'\x04' + shared_x + shared_y
 
-        # Perform Diffie-Hellman exchange to obtain the shared secret point
-        shared_key = self.__private_key.exchange(ec.ECDH(), ephemeral_public_key)
-
-        # HKDF input with 0x04 prefixes, using R_x and R_y
-        hkdf_input = (b'\x04' + ephemeral + b'\x04' + shared_key)
-
-        symm_key = HKDF(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=None,
-            info=b"",
-            backend=default_backend()
-        ).derive(hkdf_input)
+        # Prepare HKDF input as per the specification
+        hkdf_input = b'\x04' + ephemeral + shared_key
+        symm_key = HKDF(hkdf_input, 32, salt=None, hashmod=SHA256)
 
         # Decrypt the message using AES-GCM
-        decryptor = Cipher(
-            algorithms.AES(symm_key),
-            modes.GCM(nonce, tag),
-            backend=default_backend()
-        ).decryptor()
-        return decryptor.update(ciphertext) + decryptor.finalize()
+        cipher = AES.new(symm_key, AES.MODE_GCM, nonce=nonce)
+        decrypted_message = cipher.decrypt_and_verify(ciphertext, tag)
+
+        return decrypted_message
 
     def apply_patch(self, quex_request) -> 'HTTPRequest':
         """
