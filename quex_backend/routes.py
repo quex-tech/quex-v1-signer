@@ -1,10 +1,9 @@
-import requests
 from flask import Blueprint, request
 
 from quex_backend import account, get_quote, patch_processor
-from quex_backend.models import *
+from quex_backend.models import QuexRequest, DataItem, QuexResponse, b64dict
 from quex_backend.td_quote import TDQuote
-from quex_backend.utils import *
+from quex_backend.utils import make_request, process_json, get_timestamp
 
 bp = Blueprint('v1', __name__)
 

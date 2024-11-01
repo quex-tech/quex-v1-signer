@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 import pytest
+import json
 
 from quex_backend.models import *
 from quex_backend.utils import *

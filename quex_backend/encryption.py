@@ -6,7 +6,7 @@ from Crypto.Protocol.KDF import HKDF
 from ecdsa import SECP256k1, SigningKey, VerifyingKey
 from ecdsa.util import number_to_string
 
-from quex_backend.models import *
+from quex_backend.models import HTTPRequest, RequestHeader, QueryParameter
 
 
 class EncryptedPatchProcessor:
@@ -34,10 +34,7 @@ class EncryptedPatchProcessor:
         shared_x = number_to_string(shared_point.x(), SECP256k1.order)
         shared_y = number_to_string(shared_point.y(), SECP256k1.order)
         shared_key = b'\x04' + shared_x + shared_y
-
-        # Prepare HKDF input as per the specification
-        hkdf_input = b'\x04' + ephemeral + shared_key
-        symm_key = HKDF(hkdf_input, 32, salt=None, hashmod=SHA256)
+        symm_key = HKDF(b'\x04' + ephemeral + shared_key, 32, salt=None, hashmod=SHA256)
 
         # Decrypt the message using AES-GCM
         cipher = AES.new(symm_key, AES.MODE_GCM, nonce=nonce)

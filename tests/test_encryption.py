@@ -1,4 +1,5 @@
 import unittest
+import json
 from pathlib import Path
 
 from ecdsa import SECP256k1, SigningKey

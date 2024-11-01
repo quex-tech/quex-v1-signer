@@ -1,6 +1,5 @@
 import base64
 import dataclasses
-import json
 from base64 import b64encode
 from dataclasses import dataclass, astuple
 from enum import IntEnum
@@ -72,7 +71,7 @@ class RequestHeader(ABIEncodable):
 
     @staticmethod
     def obj_schema() -> str:
-        return f'(string,string)'
+        return '(string,string)'
 
 
 # QueryParameter structure
@@ -87,7 +86,7 @@ class QueryParameter(ABIEncodable):
 
     @staticmethod
     def obj_schema() -> str:
-        return f'(string,string)'
+        return '(string,string)'
 
 
 # QueryParameterPatch structure (encrypted value in base64)
