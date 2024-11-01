@@ -122,6 +122,10 @@ class TestModelsEncoding(unittest.TestCase):
         self.assertNotEqual(original_request.parameters, patched_request.parameters)
         self.assertNotEqual(original_request.body, patched_request.body)
 
-        # self.assertEqual(patched_request.parameters, http_request.parameters)
+        self.assertIn("patch_for_path_suffix", patched_request.path)
+        self.assertEqual(patched_request.body, b"patched body")
+        self.assertIn("my_secret_api_key", str(patched_request.headers))
+        self.assertIn("param_value_1", str(patched_request.parameters))
+        self.assertIn("param_value_2", str(patched_request.parameters))
 
 
