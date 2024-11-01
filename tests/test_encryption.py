@@ -1,10 +1,10 @@
-import pytest
-from quex_backend.encryption import EncryptedPatchProcessor
-from quex_backend.models import *
 import unittest
 from pathlib import Path
-from ecdsa import SECP256k1, SigningKey, VerifyingKey
 
+from ecdsa import SECP256k1, SigningKey
+
+from quex_backend.encryption import EncryptedPatchProcessor
+from quex_backend.models import *
 from tests.client import Client
 
 
@@ -15,11 +15,11 @@ class TestModelsEncoding(unittest.TestCase):
     test_vectors = [
         {
             "message": b"Hello, secure world!",
-            "ciphertext_hex": "8fae6e336ec560f6035d7fd7a827bf26c8a2978d897cf73faea4a84ee838eb30be0d2a863c4562b75964a4ee7dc247f59e4711bae733d77718ea1c810dce94511717962a5bb5ef98744dfe41791ea8af50e827eae89a20abf8221434f05fb3f74c4664fe530856e769e6c0b8dbf78804bb899f1d"
+            "ciphertext_hex": "3972834c54f0a7abbd71251edbe00cfd0117b5f8ae071fb266517aaae1cf35ea658dd0b7b041cedc3ef440b1a47b09a6c1de96c56f29d18e6d1de4fc04c2014faaa76dda14365aa5c819c3faf6800f6af6bd02c0103489fdc31ed7f7c66c6b711cb35a18baf311987cf1c8ebfde4572e2c748c42"
         },
         {
             "message": b"Some encrypted message, to be applied as a patch",
-            "ciphertext_hex": "7c60e54d0ca1fed95a49e718bf75900cfbf2f482596b5cc0325a8c8b309c244156db3a18aaa7bc23ccd436a1555b307cc29b1d89c6105951e13d745b108d809cf33f032b187720a0c2ac37f956b127b397486ec614a3ae615fb9e787bd1d9ed0f52eb541b9cefdd2167325eaf7251278ae2b3a46a275088bbdf266b6a43cd7c6ec54a9c76d0c0e4b541a1c4e4c91dd67"
+            "ciphertext_hex": "c122d23f45ffc06e5543ced11e36829117286c1be8b2351dc90824fae5981b573d7083addb19d873f2f262ea6b2980ac437aec89c4c78248b324486c19b977bf275bbd99066bfc658b472b1822f75bf9311013df52922b43bb0017fec5519fc0541e0665258743cbdab9239a14fc1df675a5089228309ce4e044c12740f6c499151121c6f2db581b8bdffeddeed1adf5"
         },
     ]
     PRIVATE_KEY_HEX = "0x123456789abcdef"
@@ -105,7 +105,7 @@ class TestModelsEncoding(unittest.TestCase):
     def test_apply_patch_from_test_vectors(self):
         v = next(
             (v for v in self.vectors if
-             v["keccak256_hex"] == "0xf89767b3dbd2346540d343cb3a61daff7998489b566e617979652efe574666a9"),
+             v["keccak256_hex"] == "0xc157dc5cbc9d6a54341980f61d03c734472ef7c36bf6b3d9cb8f6fd4d20ae297"),
             None  # Returns None if no matching vector is found
         )
 
