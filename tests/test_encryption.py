@@ -16,11 +16,11 @@ class TestModelsEncoding(unittest.TestCase):
     test_vectors = [
         {
             "message": b"Hello, secure world!",
-            "ciphertext_hex": "b17bc6d3a83209e8668523ff0bdb944927b848ebf691056ca3684944243693e525654dc66a1074d857b7041751c1773badf9b3c4419ba81c7a586ab844e0060646644f9d8d37f9c7ad914d929610ce916e01459ab51ed1102b983ca0182749cffcfd33cff04914d07326bfee5b974efc45b17afc"
+            "ciphertext_hex": "8fae6e336ec560f6035d7fd7a827bf26c8a2978d897cf73faea4a84ee838eb30be0d2a863c4562b75964a4ee7dc247f59e4711bae733d77718ea1c810dce94511717962a5bb5ef98744dfe41791ea8af50e827eae89a20abf8221434f05fb3f74c4664fe530856e769e6c0b8dbf78804bb899f1d"
         },
         {
             "message": b"Some encrypted message, to be applied as a patch",
-            "ciphertext_hex": "499009dbfebed0abeeaf6b89ab1f168a04bcbed173fc4f1abdbdb4475674a971a4b4977bf89d558f3e4cb243d619455f0a5776d0bdbd0a191cb9b823f8d80a32a647f3538132d2e528d63e87935fd21a5a8d57efc0def657c80fc6ebf357d5389d3c9ef22b17b65738d3fc4f4671c5dc1b20cff737ee8bf1db5f153f144be31dd0b8b82f2e0f72ecfd3c1d5ffeb3a273"
+            "ciphertext_hex": "7c60e54d0ca1fed95a49e718bf75900cfbf2f482596b5cc0325a8c8b309c244156db3a18aaa7bc23ccd436a1555b307cc29b1d89c6105951e13d745b108d809cf33f032b187720a0c2ac37f956b127b397486ec614a3ae615fb9e787bd1d9ed0f52eb541b9cefdd2167325eaf7251278ae2b3a46a275088bbdf266b6a43cd7c6ec54a9c76d0c0e4b541a1c4e4c91dd67"
         },
     ]
     PRIVATE_KEY_HEX = "0x73e44e67ae68ffade8b2d555c92599e7cc310ec152202fb6c20abfd12ec2529"
@@ -107,15 +107,15 @@ class TestModelsEncoding(unittest.TestCase):
     def test_apply_patch_from_test_vectors(self):
         v = next(
             (v for v in self.vectors if
-             v["keccak256_hex"] == "0xa05e4d67d7156ba22c28e919033305cdf76fbde6dbad9ec6c7bb710384cffb57"),
+             v["keccak256_hex"] == "0xf89767b3dbd2346540d343cb3a61daff7998489b566e617979652efe574666a9"),
             None  # Returns None if no matching vector is found
         )
 
         qr = QuexRequest.parse(v["quex_request"])
         original_request = qr.request
-        print(f"\n1 !! {original_request}")
         patched_request = self.patch_processor.apply_patch(qr)
-        print(f"\n2 !! {patched_request}")
+        print(f"\nOriginal request: {original_request}")
+        print(f"\nPatched request : {patched_request}")
 
         self.assertNotEqual(original_request.path, patched_request.path)
         self.assertNotEqual(original_request.headers, patched_request.headers)
