@@ -1,10 +1,9 @@
 import pytest
-from cryptography.hazmat.primitives.asymmetric import ec
 from quex_backend.encryption import EncryptedPatchProcessor
 from quex_backend.models import *
-from cryptography.hazmat.backends import default_backend
 import unittest
 from pathlib import Path
+from ecdsa import SECP256k1, SigningKey, VerifyingKey
 
 from tests.client import Client
 
@@ -51,8 +50,7 @@ class TestModelsEncoding(unittest.TestCase):
 
     def test_apply_patch(self):
         # Generate server key for decryption
-        private_key = ec.generate_private_key(ec.SECP256K1(), default_backend())
-        server = EncryptedPatchProcessor(private_key)
+        server = EncryptedPatchProcessor(SigningKey.generate(curve=SECP256k1))
         public_key = server.get_public_key()
 
         # Set up client with server's public key
