@@ -5,14 +5,15 @@ from quex_backend import account, get_quote
 from quex_backend.models import *
 from quex_backend.td_quote import TDQuote
 from quex_backend.utils import *
+from eth_keys import keys
 
 bp = Blueprint('v1', __name__)
 
 
 @bp.route('/quote')
 def quote():
-    addr = bytes.fromhex(account.address[2:])
-    quote_bin = get_quote(addr.rjust(32, b'\x00'))
+    sk = keys.PrivateKey(account.key)
+    quote_bin = get_quote(sk.public_key.to_bytes())
     quote = TDQuote.deserialize(quote_bin)
     return b64dict(quote)
 
