@@ -1,8 +1,8 @@
 import unittest
+import json
 from pathlib import Path
 
 from quex_backend.models import *
-from quex_backend.utils import *
 
 
 class TestModelsEncoding(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestModelsEncoding(unittest.TestCase):
             obj = QuexRequest.parse(v["quex_request"])
 
             self.assertEqual("0x" + obj.bytes().hex(), v["encoded_hex"])
-            self.assertEqual("0x" + obj.feed_id().hex(), v["keccack256_hex"])
+            self.assertEqual("0x" + obj.feed_id().hex(), v["keccak256_hex"])
 
 
 if __name__ == "__main__":

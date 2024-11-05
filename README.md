@@ -27,7 +27,7 @@ deactivate
 ## Environment Variables
 + `CONFIG`: full path to `config.toml`
 + `ETH_SIGNER_KEY`: private key of signing service
-+ `COINMARKETCAP_API_KEY`: API key for Coinmarketcap
++ `PATCH_PROCESSOR_KEY`: private key of private patch processor
 + `DEBUG`: set this variable to 1 if the server is run outside of TD. In this case, instead of loading TDX quoting
   functionality. The endpoint `/quote` will attempt to read attestation quote from binary file `quote.dat`. To test this
   endpoint, supply `quote.dat` additionally
@@ -37,6 +37,7 @@ The environment variables can be set inside `.env` file:
 $ cat .env
 CONFIG=/etc/quex_signer.toml
 ETH_SIGNER_KEY=0x0000000000000000000000000000000000000000000000000000000000000001
+PATCH_PROCESSOR_KEY=0x123456789abcdef
 DEBUG=1
 ```
 
