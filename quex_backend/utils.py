@@ -1,12 +1,13 @@
 import ssl
 
 import eth_abi
-import jq
 import ntplib
 import requests
 from requests.adapters import HTTPAdapter
 
 from quex_backend.models import HTTPRequest
+
+from quex_backend.interpreter import jq_eval, parser
 
 c = ntplib.NTPClient()
 
@@ -28,7 +29,8 @@ def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
     Execute JQ program over the input data and encode the result according to the schema provided.
     """
     # Use JQ to filter the JSON input (input_json is expected to be a dictionary)
-    result = jq.compile(json_query).input(input_json).first()
+    ast = parser.parse(json_query)
+    result = jq_eval(input_json, ast)
 
     # Encode the result using the provided schema
     encoded = eth_abi.encode([schema], [result])
