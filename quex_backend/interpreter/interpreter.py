@@ -59,3 +59,5 @@ def jq_eval(obj, ast):
         return datetime.fromtimestamp(t).isoformat() + 'Z'
     elif ast.type == 'neg':
         return -jq_eval(obj, ast.children[0])
+    elif ast.type == 'round':
+        return round(obj)

@@ -77,7 +77,6 @@ class TestModelsEncoding(unittest.TestCase):
             headers=[RequestHeaderPatch("X-API-KEY", encrypted_api_key)],
             parameters=[],
             body=b"",
-            td_id=1
         )
 
         # Create the QuexRequest
@@ -106,7 +105,7 @@ class TestModelsEncoding(unittest.TestCase):
     def test_apply_patch_from_test_vectors(self):
         v = next(
             (v for v in self.vectors if
-             v["keccak256_hex"] == "0xc157dc5cbc9d6a54341980f61d03c734472ef7c36bf6b3d9cb8f6fd4d20ae297"),
+             v["keccak256_hex"] == "0xa866ffb38f4eadbe3ea0bf38d783c1bcd6277bf32e060f0bd6bf6b6bc009f649"),
             None  # Returns None if no matching vector is found
         )
 

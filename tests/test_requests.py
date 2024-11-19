@@ -10,6 +10,7 @@ from quex_backend.utils import *
 
 @dataclass
 class TestVector:
+    __test__ = False
     host: str
     expected_error: str = ""
     path: str = ""

@@ -54,7 +54,8 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     # Create a custom SSL context
     context = ssl.create_default_context()
     context.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")  # Apply the modern cipher list
-    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+#    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+    context.minimum_version =  ssl.TLSVersion.TLSv1_2
 
     # Use the SSLAdapter to set the context in requests
     session = requests.Session()
