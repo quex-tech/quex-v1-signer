@@ -31,9 +31,7 @@ class EncryptedPatchProcessor:
         # Perform ECDH to obtain the shared secret point
         ephemeral_public_key = VerifyingKey.from_string(ephemeral, curve=SECP256k1)
         shared_point = ephemeral_public_key.pubkey.point * self.__private_key.privkey.secret_multiplier
-        shared_x = number_to_string(shared_point.x(), SECP256k1.order)
-        shared_y = number_to_string(shared_point.y(), SECP256k1.order)
-        shared_key = b'\x04' + shared_x + shared_y
+        shared_key = b'\x04' + shared_point.to_bytes()
         symm_key = HKDF(b'\x04' + ephemeral + shared_key, 32, salt=None, hashmod=SHA256)
 
         # Decrypt the message using AES-GCM

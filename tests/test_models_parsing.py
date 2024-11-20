@@ -93,15 +93,13 @@ class TestModelsParsing(unittest.TestCase):
             "path_suffix": encrypted_value,
             "headers": [{"key": "Authorization", "ciphertext": encrypted_value}],
             "parameters": [{"key": "id", "ciphertext": encrypted_value}],
-            "body": patch_body,
-            "td_id": 12345
+            "body": patch_body
         }
         private_patch = HTTPPrivatePatch.parse(data)
         self.assertEqual(private_patch.path_suffix, b"encrypted_value")
         self.assertEqual(private_patch.headers[0].key, "Authorization")
         self.assertEqual(private_patch.parameters[0].key, "id")
         self.assertEqual(private_patch.body, b"patch_body_content")
-        self.assertEqual(private_patch.td_id, 12345)
 
     def test_http_private_patch_invalid_base64(self):
         data = {

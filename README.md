@@ -95,3 +95,15 @@ Response example:
   }
 }
 ```
+
+## Supported JQ operations
++ `+`, `-`, `*`, `/`, `%`
++ Selectors, both with `.` and `[]`
++ Array slicing operator `[n:m]`
++ Piping `|`
++ Array construction with `[]`
++ `map`
++ Math functions: `floor`, `abs`, `round`, `sqrt`
++ String and list manipulation `split`, `join`
++ Date timestamp conversion `todate`, `fromdate`
++ String to number conversion `tonumber`

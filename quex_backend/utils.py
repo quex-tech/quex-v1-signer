@@ -1,12 +1,13 @@
 import ssl
 
 import eth_abi
-import jq
 import ntplib
 import requests
 from requests.adapters import HTTPAdapter
 
 from quex_backend.models import HTTPRequest
+
+from quex_backend.interpreter import jq_eval, parser
 
 c = ntplib.NTPClient()
 
@@ -28,7 +29,8 @@ def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
     Execute JQ program over the input data and encode the result according to the schema provided.
     """
     # Use JQ to filter the JSON input (input_json is expected to be a dictionary)
-    result = jq.compile(json_query).input(input_json).first()
+    ast = parser.parse(json_query)
+    result = jq_eval(input_json, ast)
 
     # Encode the result using the provided schema
     encoded = eth_abi.encode([schema], [result])
@@ -52,7 +54,8 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     # Create a custom SSL context
     context = ssl.create_default_context()
     context.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")  # Apply the modern cipher list
-    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+#    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+    context.minimum_version =  ssl.TLSVersion.TLSv1_2
 
     # Use the SSLAdapter to set the context in requests
     session = requests.Session()

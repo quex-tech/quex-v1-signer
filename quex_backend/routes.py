@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from quex_backend import account, get_quote, patch_processor
 from quex_backend.models import QuexRequest, DataItem, QuexResponse, b64dict
 from quex_backend.td_quote import TDQuote
+from eth_keys import keys
 from quex_backend.utils import make_request, process_json, get_timestamp
 
 bp = Blueprint('v1', __name__)
@@ -10,8 +11,8 @@ bp = Blueprint('v1', __name__)
 
 @bp.route('/quote')
 def quote():
-    addr = bytes.fromhex(account.address[2:])
-    quote_bin = get_quote(addr.rjust(32, b'\x00'))
+    sk = keys.PrivateKey(account.key)
+    quote_bin = get_quote(sk.public_key.to_bytes())
     quote = TDQuote.deserialize(quote_bin)
     return b64dict(quote)
 

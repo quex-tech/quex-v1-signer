@@ -3,3 +3,5 @@ quote.dat
 .env
 __pycache__/
 .idea
+quex_backend/interpreter/parser.out
+quex_backend/interpreter/parsetab.py

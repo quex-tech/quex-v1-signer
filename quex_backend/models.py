@@ -132,7 +132,6 @@ class HTTPPrivatePatch(ABIEncodable):
     headers: List[RequestHeaderPatch]
     parameters: List[QueryParameterPatch]
     body: bytes
-    td_id: int  # Identifier to tell which TD can decrypt the patch
 
     @staticmethod
     def parse(data: dict):
@@ -143,12 +142,11 @@ class HTTPPrivatePatch(ABIEncodable):
             headers=headers,
             parameters=parameters,
             body=base64.b64decode(data['body']),  # Decode base64
-            td_id=data['td_id']
         )
 
     @staticmethod
     def obj_schema() -> str:
-        return f"(bytes,{RequestHeaderPatch.obj_schema()}[],{QueryParameterPatch.obj_schema()}[],bytes,uint256)"
+        return f"(bytes,{RequestHeaderPatch.obj_schema()}[],{QueryParameterPatch.obj_schema()}[],bytes)"
 
 
 # HTTPRequest structure
