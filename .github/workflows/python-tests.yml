@@ -32,8 +32,8 @@ jobs:
         run: |
           echo "CONFIG=$(pwd)/config.toml" >> $GITHUB_ENV  # Set path to the TOML file
           echo "ETH_SIGNER_KEY=0x0000000000000000000000000000000000000000000000000000000000000001" >> $GITHUB_ENV
+          echo "PATCH_PROCESSOR_KEY=0x123456789abcdef" >> $GITHUB_ENV
           echo "DEBUG=1" >> $GITHUB_ENV
-          echo "COINMARKETCAP_API_KEY=dummy_api_key_here" >> $GITHUB_ENV  # Set API key
 
       - name: Run tests
         run: pytest
