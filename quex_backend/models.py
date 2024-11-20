@@ -1,6 +1,5 @@
 import base64
 import dataclasses
-import json
 from base64 import b64encode
 from dataclasses import dataclass, astuple
 from enum import IntEnum
@@ -72,7 +71,7 @@ class RequestHeader(ABIEncodable):
 
     @staticmethod
     def obj_schema() -> str:
-        return f'(string,string)'
+        return '(string,string)'
 
 
 # QueryParameter structure
@@ -87,7 +86,7 @@ class QueryParameter(ABIEncodable):
 
     @staticmethod
     def obj_schema() -> str:
-        return f'(string,string)'
+        return '(string,string)'
 
 
 # QueryParameterPatch structure (encrypted value in base64)
@@ -191,6 +190,21 @@ class HTTPRequest(ABIEncodable):
 
         # Use urljoin to properly concatenate host and path
         return urljoin(host, self.path)
+
+    def get_parameters(self):
+        params = {}
+        for p in self.parameters:
+            params[p.key] = p.value
+        return params
+
+    def get_headers(self):
+        headers = {}
+        for p in self.headers:
+            headers[p.key] = p.value
+        return headers
+
+    def get_body(self):
+        return self.body
 
 
 # QuexRequest structure

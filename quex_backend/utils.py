@@ -1,12 +1,11 @@
-from typing import Mapping
+import ssl
 
 import eth_abi
 import jq
-import json
 import ntplib
 import requests
+from requests.adapters import HTTPAdapter
 
-from quex_backend import cmc_api_key
 from quex_backend.models import HTTPRequest
 
 c = ntplib.NTPClient()
@@ -37,32 +36,37 @@ def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
     return encoded
 
 
-def get_headers(url: str) -> Mapping[str, str]:
-    """
-    Get headers based on current url
-    TODO implement generic logic, allowing set up and extract headers to any web sources
+class SSLAdapter(HTTPAdapter):
+    def __init__(self, ssl_context=None, **kwargs):
+        self.ssl_context = ssl_context
+        super().__init__(**kwargs)
 
-    :param url:
-    :return:
-    """
-    if url.startswith("https://pro-api.coinmarketcap.com"):
-        return {
-            'Accepts': 'application/json',
-            'X-CMC_PRO_API_KEY': cmc_api_key,
-        }
-    else:
-        return {
-            'X-CMC_PRO_API_KEY': cmc_api_key,
-        }
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs['ssl_context'] = self.ssl_context
+        return super().init_poolmanager(*args, **kwargs)
 
 
 def make_request(qrr: HTTPRequest, as_json: bool = True):
     url = qrr.build_url()
-    print(f"!! {url}")
 
-    r = requests.request(qrr.method.string_value(), url, params=qrr.parameters, headers=qrr.headers, data=qrr.body,
-                         verify=True, allow_redirects=False)
-    # print("\nGot response:" + r.text)
+    # Create a custom SSL context
+    context = ssl.create_default_context()
+    context.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")  # Apply the modern cipher list
+    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+
+    # Use the SSLAdapter to set the context in requests
+    session = requests.Session()
+    session.mount('https://', SSLAdapter(ssl_context=context))
+
+    r = session.request(qrr.method.string_value(),
+                        url,
+                        params=qrr.get_parameters(),
+                        headers=qrr.get_headers(),
+                        data=qrr.get_body(),
+                        verify=True,
+                        allow_redirects=False
+                        )
+
     if r.status_code != 200:
         raise ValueError(f"Got status code {r.status_code} for request ${qrr}")
 
