@@ -17,12 +17,10 @@ class Client:
 
         # Calculate the shared secret point using ECDH
         shared_point = self.server_public_key.pubkey.point * ephemeral_private_key.privkey.secret_multiplier
-        shared_x = number_to_string(shared_point.x(), SECP256k1.order)
-        shared_y = number_to_string(shared_point.y(), SECP256k1.order)
-        shared_key = b'\x04' + shared_x + shared_y
+        shared_key = shared_point.to_bytes()
 
         # Derive the symmetric key using HKDF with SHA-256
-        hkdf_input = b'\x04' + ephemeral_public_key + shared_key
+        hkdf_input = b'\x04' + ephemeral_public_key + b'\x04' + shared_key
         symm_key = HKDF(hkdf_input, 32, salt=None, hashmod=SHA256)
 
         # Encrypt the message using AES-GCM
