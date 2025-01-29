@@ -73,9 +73,6 @@ Get latest ETHBTC pair from Binance, multiply the result by 1000000, round value
     "schema": "int256"
 }' \
   http://127.0.0.1:8000/query
-
-
-
 ```
 
 

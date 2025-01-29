@@ -1,7 +1,7 @@
 import base64
 import dataclasses
-from base64 import b64encode
-from dataclasses import dataclass, astuple
+from base64 import b64encode, b64decode
+from dataclasses import dataclass, astuple, fields
 from enum import IntEnum
 from typing import List
 from urllib.parse import urljoin
@@ -21,6 +21,16 @@ def b64dict(obj):
                               }
                               )
 
+def from_nested_tuple(t, class_constructor):
+    if '_name' in dir(class_constructor) and class_constructor._name == 'List':
+        return [from_nested_tuple(x, class_constructor.__args__[0]) for x in t]
+    elif type(t) == tuple:
+        return class_constructor(*( \
+            from_nested_tuple(x,y.type) \
+            for x,y in zip(t, fields(class_constructor))))
+    else:
+        return class_constructor(t)
+
 
 #######################################
 # Data structures for making requests #
@@ -28,7 +38,6 @@ def b64dict(obj):
 
 # Define the parent abstract class
 class ABIEncodable(ABC):
-
     @staticmethod
     @abstractmethod
     def obj_schema() -> str:
@@ -38,13 +47,13 @@ class ABIEncodable(ABC):
         """
         pass
 
+
     def bytes(self) -> bytes:
         """
         Default method to encode the object as bytes using the eth_abi library.
         It uses the obj_schema() method and encodes the result of astuple(self).
         """
         return eth_abi.encode([self.obj_schema()], [astuple(self)])
-
 
 class RequestMethod(IntEnum):
     GET = 0
@@ -66,10 +75,6 @@ class RequestHeader(ABIEncodable):
     value: str
 
     @staticmethod
-    def parse(data: dict):
-        return RequestHeader(**data)
-
-    @staticmethod
     def obj_schema() -> str:
         return '(string,string)'
 
@@ -79,10 +84,6 @@ class RequestHeader(ABIEncodable):
 class QueryParameter(ABIEncodable):
     key: str
     value: str
-
-    @staticmethod
-    def parse(data: dict):
-        return QueryParameter(**data)
 
     @staticmethod
     def obj_schema() -> str:
@@ -96,13 +97,6 @@ class QueryParameterPatch(ABIEncodable):
     ciphertext: bytes  # Encrypted value
 
     @staticmethod
-    def parse(data: dict):
-        return QueryParameterPatch(
-            key=data['key'],
-            ciphertext=base64.b64decode(data['ciphertext'])  # Decode base64 string to bytes
-        )
-
-    @staticmethod
     def obj_schema() -> str:
         return "(string,bytes)"
 
@@ -112,13 +106,6 @@ class QueryParameterPatch(ABIEncodable):
 class RequestHeaderPatch(ABIEncodable):
     key: str
     ciphertext: bytes  # Encrypted value
-
-    @staticmethod
-    def parse(data: dict):
-        return RequestHeaderPatch(
-            key=data['key'],
-            ciphertext=base64.b64decode(data['ciphertext'])  # Decode base64 string to bytes
-        )
 
     @staticmethod
     def obj_schema() -> str:
@@ -132,17 +119,6 @@ class HTTPPrivatePatch(ABIEncodable):
     headers: List[RequestHeaderPatch]
     parameters: List[QueryParameterPatch]
     body: bytes
-
-    @staticmethod
-    def parse(data: dict):
-        headers = [RequestHeaderPatch.parse(h) for h in data['headers']]
-        parameters = [QueryParameterPatch.parse(p) for p in data['parameters']]
-        return HTTPPrivatePatch(
-            path_suffix=base64.b64decode(data['path_suffix']),  # Decode base64
-            headers=headers,
-            parameters=parameters,
-            body=base64.b64decode(data['body']),  # Decode base64
-        )
 
     @staticmethod
     def obj_schema() -> str:
@@ -162,24 +138,6 @@ class HTTPRequest(ABIEncodable):
     @staticmethod
     def obj_schema() -> str:
         return f'(uint8,string,string,{RequestHeader.obj_schema()}[],{QueryParameter.obj_schema()}[],bytes)'
-
-    @staticmethod
-    def parse(data: dict):
-        method = RequestMethod[data['method'].upper()]
-        headers = [RequestHeader.parse(h) for h in data['headers']]
-        parameters = [QueryParameter.parse(p) for p in data['parameters']]
-
-        # Decode the base64-encoded JSON body if it exists
-        body = base64.b64decode(data['body'])
-
-        return HTTPRequest(
-            method=method,
-            host=data['host'],
-            path=data['path'],
-            headers=headers,
-            parameters=parameters,
-            body=body  # Store the unpacked JSON as a dictionary
-        )
 
     def build_url(self) -> str:
         # Ensure that the host starts with the correct protocol
@@ -207,28 +165,23 @@ class HTTPRequest(ABIEncodable):
 
 # QuexRequest structure
 @dataclass
-class QuexRequest(ABIEncodable):
+class HTTPAction(ABIEncodable):
     request: HTTPRequest
     patch: HTTPPrivatePatch
     schema: str  # ResultSchema as a string for now
     filter: str  # JqFilter as a string for now
 
     @staticmethod
-    def parse(data: dict):
-        request = HTTPRequest.parse(data['request'])
-        patch = HTTPPrivatePatch.parse(data['patch'])
-        return QuexRequest(
-            request=request,
-            patch=patch,
-            schema=data['schema'],
-            filter=data['filter']
-        )
+    def parse(data: str):
+        data_bytes = b64decode(data)
+        data_tuple, = eth_abi.decode([HTTPAction.obj_schema()], data_bytes)
+        return from_nested_tuple(data_tuple, HTTPAction)
 
     @staticmethod
     def obj_schema() -> str:
         return f"({HTTPRequest.obj_schema()},{HTTPPrivatePatch.obj_schema()},string,string)"
 
-    def feed_id(self) -> bytes:
+    def action_id(self) -> bytes:
         return keccak(self.bytes())
 
 
@@ -249,23 +202,32 @@ class ETHSignature:
             v=sig.v
         )
 
-
 @dataclass
 class DataItem:
     timestamp: int
-    feed_id: bytes
+    error: int
     value: bytes
 
-    def to_bytes(self) -> bytes:
-        return eth_abi.encode(["uint256", "bytes32", "bytes"], [self.timestamp, self.feed_id, self.value])
-
-    def sign_with_account(self, account: Account):
-        msg = self.to_bytes()
-        msghash = encode_defunct(keccak(msg))
-        return ETHSignature.fromETH(account.sign_message(msghash))
+    @staticmethod
+    def obj_schema() -> str:
+        return "(uint256,uint256,bytes)"
 
 
 @dataclass
-class QuexResponse:
-    data: DataItem
-    signature: ETHSignature
+class OracleMessage(ABIEncodable):
+    action_id: bytes
+    data_item: DataItem
+
+    @staticmethod
+    def obj_schema() -> str:
+        return f"(bytes32,{DataItem.obj_schema()})"
+
+    def sign_with_account(self, account: Account):
+        msg = self.bytes()
+        msghash = encode_defunct(keccak(msg))
+        return ETHSignature.fromETH(account.sign_message(msghash))
+
+@dataclass
+class OracleResponse:
+    msg: OracleMessage
+    sig: ETHSignature
