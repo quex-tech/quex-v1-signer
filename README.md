@@ -40,6 +40,11 @@ ETH_SIGNER_KEY_FILE="./sk.txt"
 DEBUG=1
 ```
 
+## Other Files
+
+The service requires the Intel SGX root CA certificate for operation. The default file location is expected to be
+`root.pem` in the project directory
+
 ## Run server
 From virtual environment
 ```sh
