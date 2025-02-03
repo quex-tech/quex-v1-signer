@@ -70,3 +70,17 @@ class EncryptedPatchProcessor:
             http_request.path += decrypted_path_suffix.decode('utf-8')
 
         return http_request
+
+    def decrypt_quoted_message(self, ciphertext):
+        ephemeral = bytes(ciphertext[:64])
+        ephemeral_public_key = VerifyingKey.from_string(ephemeral, curve=SECP256k1)
+        shared_point = ephemeral_public_key.pubkey.point * self.__private_key.privkey.secret_multiplier
+        shared_key = b'\x04' + shared_point.to_bytes()
+        symm_key = HKDF(b'\x04' + ephemeral + shared_key, 32, salt=b'quex_salt', hashmod=SHA256)[:16]
+        
+        ct_bin = bytes(ciphertext)[64:]
+        iv, mac, ciphertext = ct_bin[:12], ct_bin[16:32], ct_bin[32:]
+        
+        cipher = AES.new(symm_key, AES.MODE_GCM, nonce=iv)
+        
+        return cipher.decrypt_and_verify(ciphertext, mac)
