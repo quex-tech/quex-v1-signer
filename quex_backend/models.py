@@ -119,10 +119,11 @@ class HTTPPrivatePatch(ABIEncodable):
     headers: List[RequestHeaderPatch]
     parameters: List[QueryParameterPatch]
     body: bytes
+    td_address: str
 
     @staticmethod
     def obj_schema() -> str:
-        return f"(bytes,{RequestHeaderPatch.obj_schema()}[],{QueryParameterPatch.obj_schema()}[],bytes)"
+        return f"(bytes,{RequestHeaderPatch.obj_schema()}[],{QueryParameterPatch.obj_schema()}[],bytes,address)"
 
 
 # HTTPRequest structure

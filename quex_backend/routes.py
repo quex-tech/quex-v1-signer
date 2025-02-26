@@ -70,6 +70,12 @@ def address():
     return account.address
 
 
+@bp.route('/pubkey')
+def pubkey():
+    sk = keys.PrivateKey(account.key)
+    return hex(sk.public_key)
+
+
 @bp.route('/query', methods=['POST'])
 def query():
     action = request.get_json()['action']
