@@ -1,19 +1,25 @@
 from flask import Blueprint, request, current_app, abort
 import copy
 
+from eth_abi import encode as eth_abi_encode
+from eth_account import Account
+from eth_keys import keys
+
 from quex_backend import account, get_quote, get_report, patch_processor
-from quex_backend.models import DataItem, OracleResponse, OracleMessage, HTTPAction, b64dict
+from quex_backend.models import DataItem, OracleResponse, OracleMessage, HTTPAction, b64dict, PlutusHTTPAction, EthereumHTTPAction, PlutusOracleMessage, EthereumOracleMessage
 from quex_backend.vault_structs import TdKeyRequest, TdReport, TdKeyRequestMask, TdMsg
 from quex_backend.td_quote import TDQuote, SGXQuote
 from quex_backend.key_request import apply_mask, verify_sgx_quote_report_data, verify_sgx_quote
-from eth_keys import keys
 from quex_backend.utils import make_request, process_json, get_timestamp
-from eth_account import Account
+from quex_backend.plutus.abi import encoder as plutus_abi_encoder
 from quex_backend.encryption import EncryptedPatchProcessor
+
 from base64 import b64encode, b64decode
 import OpenSSL
 
 bp = Blueprint('v1', __name__)
+
+PLUTUS_MAGIC = b"\xd8\x79\x9f"
 
 
 @bp.route('/quote')
@@ -23,6 +29,7 @@ def quote():
     quote = TDQuote.deserialize(quote_bin)
     return b64dict(quote)
 
+
 @bp.route('/key-request')
 def key_request():
     sk = keys.PrivateKey(account.key)
@@ -30,7 +37,8 @@ def key_request():
     report = TdReport.from_buffer_copy(report_bin)
     request_mask = TdKeyRequestMask(**current_app.config['KEY_REQUEST_MASK'])
     key_req = TdKeyRequest(request_mask, report)
-    return { 'key_req': b64encode(bytes(key_req)).decode() }
+    return {'key_req': b64encode(bytes(key_req)).decode()}
+
 
 @bp.route('/instantiate-key', methods=['POST'])
 def instantiate_key():
@@ -46,7 +54,8 @@ def instantiate_key():
     # compare mask with config mask
     mask = TdKeyRequestMask(**current_app.config['KEY_REQUEST_MASK'])
     with open(current_app.config['TDX_ROOT_CERT'], 'rb') as f:
-        root_cert = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, f.read())
+        root_cert = OpenSSL.crypto.load_certificate(
+            OpenSSL.crypto.FILETYPE_PEM, f.read())
     if bytes(msg.mask) != bytes(mask):
         abort(400)
     # compare masked report with own report
@@ -65,6 +74,7 @@ def instantiate_key():
     except:
         abort(400)
 
+
 @bp.route('/address')
 def address():
     return account.address
@@ -79,20 +89,29 @@ def pubkey():
 @bp.route('/query', methods=['POST'])
 def query():
     action = request.get_json()['action']
-    qr = HTTPAction.parse(action)
+    action_bytes = b64decode(action)
+
+    if action_bytes[:len(PLUTUS_MAGIC)] == PLUTUS_MAGIC:
+        action_cls = PlutusHTTPAction
+        msg_cls = PlutusOracleMessage
+        encode = plutus_abi_encoder.encode
+    else:
+        action_cls = EthereumHTTPAction
+        msg_cls = EthereumOracleMessage
+        encode = eth_abi_encode
+
+    qr = action_cls.parse(action_bytes)
     patched_http_request = patch_processor.apply_patch(qr)
     d = make_request(patched_http_request)
-    jq = qr.filter
-    processed_response = process_json(d, jq, qr.schema)
-    msg = OracleMessage(
-            data_item=DataItem(
-                timestamp=get_timestamp(),
-                error=0,
-                value=processed_response,
-                ),
-            action_id=qr.action_id()
-            )
+    processed_response = process_json(d, qr.filter, qr.schema, encode)
+    msg = msg_cls(
+        data_item=DataItem(
+            timestamp=get_timestamp(),
+            error=0,
+            value=processed_response,
+        ),
+        action_id=qr.action_id()
+    )
     sig = msg.sign_with_account(account)
     response = OracleResponse(msg=msg, sig=sig)
-
     return b64dict(response)
