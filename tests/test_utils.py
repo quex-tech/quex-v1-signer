@@ -1,7 +1,9 @@
 import unittest
 
+import eth_abi
 import pytest
 
+from quex_backend.plutus.abi import encoder as plutus_abi_encoder
 from quex_backend.utils import *
 
 
@@ -27,7 +29,7 @@ class TestUtils(unittest.TestCase):
         expected_encoded = eth_abi.encode([schema], [expected_result])
 
         # Process the input JSON with the process_json function
-        actual_encoded = process_json(input_json, json_query, schema)
+        actual_encoded = process_json(input_json, json_query, schema, eth_abi.encode)
 
         # Assert that the actual encoded bytes match the expected encoded bytes
         assert actual_encoded == expected_encoded
@@ -51,7 +53,7 @@ class TestUtils(unittest.TestCase):
         expected_encoded = eth_abi.encode(['uint256'], [expected_result])
 
         # Process the input JSON with the process_json function
-        actual_encoded = process_json(input_json, json_query, schema)
+        actual_encoded = process_json(input_json, json_query, schema, eth_abi.encode)
 
         # Assert that the actual encoded bytes match the expected encoded bytes
         assert actual_encoded == expected_encoded
@@ -105,18 +107,32 @@ class TestUtils(unittest.TestCase):
         expected_encoded = eth_abi.encode([schema], [expected_result])
 
         # Process the input JSON with the process_json function
-        actual_encoded = process_json(input_json, json_query, schema)
+        actual_encoded = process_json(input_json, json_query, schema, eth_abi.encode)
 
         # Assert that the actual encoded bytes match the expected encoded bytes
         assert actual_encoded == expected_encoded
 
     def test_process_json_invalid_jq_raises(self):
         with self.assertRaises(JQProcessingError):
-            process_json({"value": 1}, ".value | |", "uint256")
+            process_json({"value": 1}, ".value | |", "uint256", eth_abi.encode)
 
     def test_process_json_invalid_schema_raises(self):
         with self.assertRaises(ABIEncodingError):
-            process_json({"value": "not-an-int"}, ".value", "uint256")
+            process_json({"value": "not-an-int"}, ".value", "uint256", eth_abi.encode)
+
+    def test_process_json_with_plutus_encoder(self):
+        input_json = {
+            "enabled": True,
+            "name": "oracle"
+        }
+
+        json_query = "[.enabled, .name]"
+        schema = "(bool,string)"
+
+        expected_encoded = plutus_abi_encoder.encode([schema], [[True, "oracle"]])
+        actual_encoded = process_json(input_json, json_query, schema, plutus_abi_encoder.encode)
+
+        assert actual_encoded == expected_encoded
 
 
 if __name__ == '__main__':

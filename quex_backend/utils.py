@@ -1,46 +1,54 @@
 import ssl
 
-import eth_abi
 import ntplib
 import requests
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, Timeout
 
-from quex_backend.models import HTTPRequest
-
 from quex_backend.interpreter import jq_eval, parser
+from quex_backend.models import HTTPRequest
 
 c = ntplib.NTPClient()
 
+
 class RequestConnectionError(Exception):
     pass
+
 
 class ResponseNotSupportedResponseCodeError(Exception):
     def __init__(self, status_code: int):
         self.status_code = status_code
 
+
 class Response4XXError(Exception):
     def __init__(self, status_code: int):
         self.status_code = status_code
+
 
 class Response5XXError(Exception):
     def __init__(self, status_code: int):
         self.status_code = status_code
 
+
 class RequestProcessingError(Exception):
     pass
+
 
 class JQProcessingError(Exception):
     pass
 
+
 class ABIEncodingError(Exception):
     pass
+
 
 class GetTimestampError(Exception):
     pass
 
+
 class ResponseNotJSONError(Exception):
     pass
+
 
 def get_timestamp() -> int:
     """
@@ -51,30 +59,26 @@ def get_timestamp() -> int:
     :return: current NTP timestamp
     """
     try:
-        response = c.request('europe.pool.ntp.org', version=4)
+        response = c.request("europe.pool.ntp.org", version=4)
         return round(response.tx_time)
     except Exception:
         raise GetTimestampError
 
-def process_json(input_json: dict, json_query: str, schema: str) -> bytes:
+
+def process_json(input_json: dict, json_query: str, schema: str, encode) -> bytes:
     """
     Execute JQ program over the input data and encode the result according to the schema provided.
     """
-
-    # Use JQ to filter the JSON input (input_json is expected to be a dictionary)
     try:
         ast = parser.parse(json_query)
         result = jq_eval(input_json, ast)
     except Exception:
         raise JQProcessingError
 
-    # Encode the result using the provided schema    
     try:
-        encoded = eth_abi.encode([schema], [result])
+        return encode([schema], [result])
     except Exception:
         raise ABIEncodingError
-
-    return encoded
 
 
 class SSLAdapter(HTTPAdapter):
@@ -83,7 +87,7 @@ class SSLAdapter(HTTPAdapter):
         super().__init__(**kwargs)
 
     def init_poolmanager(self, *args, **kwargs):
-        kwargs['ssl_context'] = self.ssl_context
+        kwargs["ssl_context"] = self.ssl_context
         return super().init_poolmanager(*args, **kwargs)
 
 
@@ -91,27 +95,24 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     try:
         url = qrr.build_url()
 
-        # Create a custom SSL context
         context = ssl.create_default_context()
-        context.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")  # Apply the modern cipher list
-        # context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
-        context.minimum_version =  ssl.TLSVersion.TLSv1_2
+        context.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
 
-        # Use the SSLAdapter to set the context in requests
         session = requests.Session()
-        session.mount('https://', SSLAdapter(ssl_context=context))
+        session.mount("https://", SSLAdapter(ssl_context=context))
 
-    
-        r = session.request(qrr.method.string_value(),
-                            url,
-                            params=qrr.get_parameters(),
-                            headers=qrr.get_headers(),
-                            data=qrr.get_body(),
-                            verify=True,
-                            allow_redirects=False
-                            )
-    except (ConnectionError, Timeout) as e:
-        raise RequestConnectionError from e
+        r = session.request(
+            qrr.method.string_value(),
+            url,
+            params=qrr.get_parameters(),
+            headers=qrr.get_headers(),
+            data=qrr.get_body(),
+            verify=True,
+            allow_redirects=False,
+        )
+    except (ConnectionError, Timeout) as exc:
+        raise RequestConnectionError from exc
 
     if r.status_code >= 300 and r.status_code < 400:
         raise ResponseNotSupportedResponseCodeError(r.status_code)
@@ -124,7 +125,7 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
 
     if r.status_code == 204:
         return ""
-    
+
     if as_json:
         try:
             return r.json()

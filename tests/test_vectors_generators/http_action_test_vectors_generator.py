@@ -5,8 +5,9 @@ from pathlib import Path
 
 from ecdsa import VerifyingKey, SigningKey, SECP256k1
 
-from quex_backend.models import HTTPPrivatePatch, RequestHeaderPatch, QueryParameterPatch, HTTPAction, HTTPRequest, \
-    RequestMethod, RequestHeader, QueryParameter, HTTPActionWithProof
+from quex_backend.models import HTTPPrivatePatch, RequestHeaderPatch, QueryParameterPatch, EthereumHTTPAction, HTTPRequest, \
+    RequestMethod, RequestHeader, QueryParameter, EthereumHTTPActionWithProof, PlutusHTTPAction, PlutusHTTPActionWithProof
+from quex_backend.plutus.cbor import PlutusTuple, dumps as plutus_dumps
 from tests.client import Client
 
 from typing import Any, Optional
@@ -75,6 +76,11 @@ def save_prepared_vectors(prepared_actions):
         json.dump(prepared_actions, f, indent=2, cls=CustomEncoder)
 
 
+def save_prepared_plutus_vectors(prepared_actions):
+    with open(Path(__file__).parent.parent.resolve() / "test_vectors" / "plutus_http_action_test_vectors.json", "w") as f:
+        json.dump(prepared_actions, f, indent=2, cls=CustomEncoder)
+
+
 def convert_request(request) -> HTTPRequest:
     headers = request["headers"]
     parameters = request["parameters"]
@@ -107,9 +113,9 @@ def prepare_patch(raw_patch, client: Client) -> HTTPPrivatePatch:
     )
 
 
-def prepare_action(raw_action, public_key) -> HTTPActionWithProof:
+def prepare_action(raw_action, public_key) -> EthereumHTTPActionWithProof:
     client = Client(public_key)
-    action = HTTPAction(
+    action = EthereumHTTPAction(
         convert_request(raw_action["request"]),
         prepare_patch(raw_action["patch"], client),
         raw_action["schema"],
@@ -117,7 +123,24 @@ def prepare_action(raw_action, public_key) -> HTTPActionWithProof:
     )
     action_id = action.action_id()
     proof = client.encrypt_message(action_id, include_ephemeral_public_key=True)
-    return HTTPActionWithProof(action, proof)
+    return EthereumHTTPActionWithProof(action, proof)
+
+
+def prepare_plutus_action(raw_action, public_key) -> PlutusHTTPActionWithProof:
+    client = Client(public_key)
+    action = PlutusHTTPAction(
+        convert_request(raw_action["request"]),
+        prepare_patch(raw_action["patch"], client),
+        raw_action["schema"],
+        raw_action["filter"]
+    )
+    action_id = action.action_id()
+    proof = client.encrypt_message(action_id, include_ephemeral_public_key=True)
+    return PlutusHTTPActionWithProof(action, proof)
+
+
+def plutus_action_bytes(action_with_proof: PlutusHTTPActionWithProof) -> bytes:
+    return plutus_dumps(PlutusTuple([action_with_proof.action.to_plutus(), action_with_proof.proof]))
 
 
 def create_patched_request(request, patch):
@@ -155,7 +178,29 @@ def prepare_vector(raw_vector):
     }
 
 
+def prepare_plutus_vector(raw_vector):
+    raw_action = raw_vector["raw_action"]
+    description = raw_vector["description"]
+
+    private_key = SigningKey.generate(curve=SECP256k1)
+    public_key = private_key.get_verifying_key()
+
+    action = prepare_plutus_action(raw_action, public_key)
+
+    return {
+        "description": description,
+        "action_id": action.action.action_id().hex(),
+        "action": action,
+        "action_bytes": plutus_action_bytes(action),
+        "patched_request": create_patched_request(raw_action["request"], raw_action["patch"]),
+        "private_key": private_key.to_string().hex(),
+        "public_key": public_key.to_string().hex(),
+    }
+
+
 if __name__ == "__main__":
     raw_vectors = read_raw_vectors()
     prepared_vectors = [prepare_vector(raw_vector) for raw_vector in raw_vectors]
+    prepared_plutus_vectors = [prepare_plutus_vector(raw_vector) for raw_vector in raw_vectors]
     save_prepared_vectors(prepared_vectors)
+    save_prepared_plutus_vectors(prepared_plutus_vectors)
