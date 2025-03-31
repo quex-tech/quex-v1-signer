@@ -5,8 +5,8 @@ from pathlib import Path
 
 from ecdsa import VerifyingKey, SigningKey, SECP256k1
 
-from quex_backend.models import HTTPPrivatePatch, RequestHeaderPatch, QueryParameterPatch, HTTPAction, HTTPRequest, \
-    RequestMethod, RequestHeader, QueryParameter, HTTPActionWithProof
+from quex_backend.models import HTTPPrivatePatch, RequestHeaderPatch, QueryParameterPatch, EthereumHTTPAction, HTTPRequest, \
+    RequestMethod, RequestHeader, QueryParameter, EthereumHTTPActionWithProof
 from tests.client import Client
 
 from typing import Any, Optional
@@ -107,9 +107,9 @@ def prepare_patch(raw_patch, client: Client) -> HTTPPrivatePatch:
     )
 
 
-def prepare_action(raw_action, public_key) -> HTTPActionWithProof:
+def prepare_action(raw_action, public_key) -> EthereumHTTPActionWithProof:
     client = Client(public_key)
-    action = HTTPAction(
+    action = EthereumHTTPAction(
         convert_request(raw_action["request"]),
         prepare_patch(raw_action["patch"], client),
         raw_action["filter"],
@@ -117,7 +117,7 @@ def prepare_action(raw_action, public_key) -> HTTPActionWithProof:
     )
     action_id = action.action_id()
     proof = client.encrypt_message(action_id, include_ephemeral_public_key=True)
-    return HTTPActionWithProof(action, proof)
+    return EthereumHTTPActionWithProof(action, proof)
 
 
 def create_patched_request(request, patch):

@@ -35,7 +35,7 @@ class TestModelsEncoding(unittest.TestCase):
         for v in self.vectors:
             patch_processor = EncryptedPatchProcessor.from_hex(v["private_key"])
 
-            action = HTTPActionWithProof.parse(v["action_bytes"])
+            action = EthereumHTTPActionWithProof.parse(base64.b64decode(v["action_bytes"]))
             original_request = action.action.request
             patched_request = patch_processor.apply_patch(action.action, action.proof)
             print(f"\nOriginal request: {original_request}")

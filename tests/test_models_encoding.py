@@ -1,3 +1,4 @@
+from base64 import b64encode, b64decode
 import unittest
 import json
 from pathlib import Path
@@ -12,9 +13,9 @@ class TestModelsEncoding(unittest.TestCase):
     # check that we can serialize test vectors without errors and get the same result, as expected
     def test_models_encoding(self):
         for v in self.vectors:
-            obj = HTTPActionWithProof.parse(v["action_bytes"])
+            obj = EthereumHTTPActionWithProof.parse(b64decode(v["action_bytes"]))
 
-            self.assertEqual(base64.b64encode(obj.bytes()).decode("ascii"), v["action_bytes"])
+            self.assertEqual(b64encode(obj.bytes()).decode("ascii"), v["action_bytes"])
             self.assertEqual(obj.action.action_id().hex(), v["action_id"])
 
 

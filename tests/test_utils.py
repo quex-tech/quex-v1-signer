@@ -27,7 +27,7 @@ class TestUtils(unittest.TestCase):
         expected_encoded = eth_abi.encode([schema], [expected_result])
 
         # Process the input JSON with the process_json function
-        actual_encoded = process_json(input_json, json_query, schema)
+        actual_encoded = process_json(input_json, json_query, schema, eth_abi.encode)
 
         # Assert that the actual encoded bytes match the expected encoded bytes
         assert actual_encoded == expected_encoded
@@ -51,7 +51,7 @@ class TestUtils(unittest.TestCase):
         expected_encoded = eth_abi.encode(['uint256'], [expected_result])
 
         # Process the input JSON with the process_json function
-        actual_encoded = process_json(input_json, json_query, schema)
+        actual_encoded = process_json(input_json, json_query, schema, eth_abi.encode)
 
         # Assert that the actual encoded bytes match the expected encoded bytes
         assert actual_encoded == expected_encoded
@@ -105,7 +105,7 @@ class TestUtils(unittest.TestCase):
         expected_encoded = eth_abi.encode([schema], [expected_result])
 
         # Process the input JSON with the process_json function
-        actual_encoded = process_json(input_json, json_query, schema)
+        actual_encoded = process_json(input_json, json_query, schema, eth_abi.encode)
 
         # Assert that the actual encoded bytes match the expected encoded bytes
         assert actual_encoded == expected_encoded
