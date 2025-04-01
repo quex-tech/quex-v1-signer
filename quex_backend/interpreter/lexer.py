@@ -10,7 +10,7 @@ tokens = [
 
 literals = "+-*/%()[]().,|:"
 
-t_IDENT = r'[a-z]\w*'
+t_IDENT = r'[a-zA-Z_]\w*'
 def t_INT(t):
     r'\d+'
     t.value = int(t.value)
