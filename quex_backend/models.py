@@ -67,6 +67,10 @@ class RequestMethod(IntEnum):
     def string_value(self) -> str:
         return self.name
 
+    @classmethod
+    def from_string(cls, value: str) -> "RequestMethod":
+        return cls[value.upper()]
+
 
 # RequestHeader structure
 @dataclass

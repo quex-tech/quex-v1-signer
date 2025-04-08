@@ -1,0 +1,104 @@
+[
+  {
+    "raw_action": {
+      "request": {
+        "method": "Get",
+        "host": "api.binance.com",
+        "path": "/",
+        "headers": [],
+        "parameters": [],
+        "body": ""
+      },
+      "patch": {},
+      "schema": "int256",
+      "filter": "."
+    },
+    "description": "Minimal valid action"
+  },
+  {
+    "raw_action": {
+      "request": {
+        "method": "Get",
+        "host": "www.binance.com",
+        "path": "/api/v3/depth",
+        "headers": [],
+        "parameters": [
+          {
+            "key": "symbol",
+            "value": "BTCUSDT"
+          },
+          {
+            "key": "limit",
+            "value": "5"
+          }
+        ],
+        "body": ""
+      },
+      "patch": {},
+      "schema": "(uint256,(uint256,uint256)[5],(uint256,uint256)[5])",
+      "filter": "[.lastUpdateId] + ([.bids, .asks] | map(map(map(tonumber*100000000|floor))))"
+    },
+    "description": "GET request with parameters. Without patch"
+  },
+  {
+    "raw_action": {
+      "request": {
+        "method": "Get",
+        "host": "www.binance.com",
+        "path": "/api/v3/ticker/price",
+        "headers": [],
+        "parameters": [],
+        "body": ""
+      },
+      "patch": {},
+      "schema": "int256",
+      "filter": "((.[] | select(.symbol == \"ETHBTC\") | .price | tonumber) * 0.6 + (.[] | select(.symbol == \"LTCBTC\") | .price | tonumber) * 0.4) * 100000000 | floor"
+    },
+    "description": "GET request. Without patch. Filter with select"
+  },
+  {
+    "raw_action": {
+      "request": {
+        "method": "Post",
+        "host": "pro-api.coinmarketcap.com",
+        "path": "/v2/cryptocurrency/quotes/latest",
+        "headers": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "parameters": [
+          {
+            "key": "id",
+            "value": "1"
+          }
+        ],
+        "body": "AAECAw=="
+      },
+      "patch": {
+        "path_suffix": "?key=123",
+        "headers": [
+          {
+            "key": "X-CMC_PRO_API_KEY",
+            "value": "api_key"
+          }
+        ],
+        "parameters": [
+          {
+            "key": "param_patch",
+            "value": "some_parameter"
+          },
+          {
+            "key": "param_patch2",
+            "value": "another_parameter"
+          }
+        ],
+        "body": "qrur/wAAAA=="
+      },
+      "schema": "(int256,int256)",
+      "filter": "data.\"1\".quote.USD.price*1000000|round"
+    },
+    "description": "POST request with all fields. Patch with all fields. Filter with an identifier starts with number"
+  }
+]

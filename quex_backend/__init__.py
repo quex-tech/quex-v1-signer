@@ -23,7 +23,8 @@ if os.environ.get("DEBUG"):
             report_bin = f.read()
         return report_bin
 else:
-    from pyquex_tdx import get_quote, get_report
+    # from pyquex_tdx import get_quote, get_report
+    pass
 
 
 key_file = os.environ.get("ETH_SIGNER_KEY_FILE")
