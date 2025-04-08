@@ -31,7 +31,7 @@ jobs:
       - name: Set Environment Variables from .env
         run: |
           echo "CONFIG=$(pwd)/config.toml" >> $GITHUB_ENV  # Set path to the TOML file
-          echo "ETH_SIGNER_KEY_FILE=\"./sk.txt\"" >> $GITHUB_ENV
+          echo "ETH_SIGNER_KEY_FILE=\"sk.txt\"" >> $GITHUB_ENV
           echo "DEBUG=1" >> $GITHUB_ENV
 
       - name: Run tests
