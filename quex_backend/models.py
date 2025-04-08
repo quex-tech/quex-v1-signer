@@ -21,13 +21,14 @@ def b64dict(obj):
                               }
                               )
 
+
 def from_nested_tuple(t, class_constructor):
     if '_name' in dir(class_constructor) and class_constructor._name == 'List':
         return [from_nested_tuple(x, class_constructor.__args__[0]) for x in t]
     elif type(t) == tuple:
         return class_constructor(*( \
-            from_nested_tuple(x,y.type) \
-            for x,y in zip(t, fields(class_constructor))))
+            from_nested_tuple(x, y.type) \
+            for x, y in zip(t, fields(class_constructor))))
     else:
         return class_constructor(t)
 
@@ -47,13 +48,13 @@ class ABIEncodable(ABC):
         """
         pass
 
-
     def bytes(self) -> bytes:
         """
         Default method to encode the object as bytes using the eth_abi library.
         It uses the obj_schema() method and encodes the result of astuple(self).
         """
         return eth_abi.encode([self.obj_schema()], [astuple(self)])
+
 
 class RequestMethod(IntEnum):
     GET = 0
@@ -66,10 +67,6 @@ class RequestMethod(IntEnum):
 
     def string_value(self) -> str:
         return self.name
-
-    @classmethod
-    def from_string(cls, value: str) -> "RequestMethod":
-        return cls[value.upper()]
 
 
 # RequestHeader structure
@@ -207,6 +204,7 @@ class ETHSignature:
             v=sig.v
         )
 
+
 @dataclass
 class DataItem:
     timestamp: int
@@ -231,6 +229,7 @@ class OracleMessage(ABIEncodable):
         msg = self.bytes()
         msghash = encode_defunct(keccak(msg))
         return ETHSignature.fromETH(account.sign_message(msghash))
+
 
 @dataclass
 class OracleResponse:
