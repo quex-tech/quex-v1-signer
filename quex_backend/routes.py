@@ -57,22 +57,34 @@ def instantiate_key():
         root_cert = OpenSSL.crypto.load_certificate(
             OpenSSL.crypto.FILETYPE_PEM, f.read())
     if bytes(msg.mask) != bytes(mask):
-        abort(400)
+        abort(400, description="Wrong mask")
     # compare masked report with own report
     msg_report = copy.deepcopy(msg.tdreport)
     if bytes(apply_mask(report, mask)) != bytes(apply_mask(msg_report, mask)):
-        abort(400)
+        abort(400, description="Wrong masked report")
     if quote.isv_enclave_report.mrenclave != bytes.fromhex(current_app.config['VAULT_MRENCLAVE']):
-        abort(400)
+        abort(400, description="Wrong mrenclave")
     try:
         verify_sgx_quote(quote, root_cert)
+    except:
+        abort(400, description="Could not verify_sgx_quote")
+    try:
         verify_sgx_quote_report_data(quote, msg)
+    except:
+        abort(400, description="Could not verify_sgx_quote_report_data")
+    try:
         key = patch_processor.decrypt_quoted_message(msg.ciphertext).hex()
+    except:
+        abort(400, description="Could not decrypt_quoted_message")
+    try:
         account = Account.from_key("0x"+key)
+    except:
+        abort(400, description="Could not Account.from_key")
+    try:
         patch_processor = EncryptedPatchProcessor.from_hex(key)
         return '', 202
     except:
-        abort(400)
+        abort(400, description="Could not EncryptedPatchProcessor.from_hex")
 
 
 @bp.route('/address')
