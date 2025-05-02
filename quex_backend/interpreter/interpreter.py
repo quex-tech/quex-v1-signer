@@ -8,8 +8,8 @@ def primitive_to_str(x):
         return str(x)
     elif type(x) == str:
         return x
-    elif x == None:
-        return "null"
+    elif x is None:
+        return ""
     else:
         raise ValueError
 
@@ -21,7 +21,13 @@ def jq_eval(obj, ast):
     elif ast.type == '.':
         return obj
     elif ast.type == '+':
-        return jq_eval(obj, ast.children[0]) + jq_eval(obj, ast.children[1])
+        first = jq_eval(obj, ast.children[0])
+        second = jq_eval(obj, ast.children[1])
+        if first is None:
+            return second
+        if second is None:
+            return first
+        return first + second
     elif ast.type == '-':
         return jq_eval(obj, ast.children[0]) - jq_eval(obj, ast.children[1])
     elif ast.type == '*':
@@ -31,8 +37,18 @@ def jq_eval(obj, ast):
     elif ast.type == '%':
         return jq_eval(obj, ast.children[0]) % jq_eval(obj, ast.children[1])
     elif ast.type == 'select':
-        return jq_eval(obj, ast.children[0])[jq_eval(obj, ast.children[1])]
+        obj = jq_eval(obj, ast.children[0])
+        selector = jq_eval(obj, ast.children[1])
+        if type(obj) == list:
+            if -len(obj) <= selector < len(obj):
+                return obj[selector]
+            return None
+        if selector in obj:
+            return obj[selector]
+        return None
     elif ast.type == 'slice':
+        if len(ast.children) == 2:
+            return jq_eval(obj, ast.children[0])[jq_eval(obj, ast.children[1]) : ]
         return jq_eval(obj, ast.children[0])[jq_eval(obj, ast.children[1]) : jq_eval(obj, ast.children[2])]
     elif ast.type == 'pipe':
         return jq_eval(jq_eval(obj, ast.children[0]), ast.children[1])

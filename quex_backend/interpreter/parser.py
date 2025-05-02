@@ -58,9 +58,12 @@ def p_binary_exp(p):
 def p_select(p):
     '''
     select : object '.' IDENT
+           | object '[' STRING ']'
            | object '[' exp ']'
     '''
     if len(p) == 4:
+        p[0] = Node('select', [p[1], Node('ident', [p[3]])])
+    elif type(p[3]) == str:
         p[0] = Node('select', [p[1], Node('ident', [p[3]])])
     else:
         p[0] = Node('select', [p[1], p[3]])
@@ -81,8 +84,16 @@ def p_unary_exp(p):
 def p_slice(p):
     '''
     slice : object '[' exp ':' exp ']'
+        | object '[' ':' exp ']'
+        | object '[' exp ':' ']'
     '''
-    p[0] = Node('slice', [p[1], p[3], p[5]])
+    if len(p) == 6:
+        if p[3] == ':':
+            p[0] = Node('slice', [p[1], Node('atomic', [0]), p[4]])
+        else:
+            p[0] = Node('slice', [p[1], p[3]])
+    else:
+        p[0] = Node('slice', [p[1], p[3], p[5]])
 
 def p_array_construction(p):
     '''
