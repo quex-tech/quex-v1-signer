@@ -5,7 +5,9 @@ tokens = [
         'STRING', 
         'IDENT',
         'INT',
-        'FLOAT'
+        'FLOAT',
+        'FUNCTION_NO_ARGS',
+        'FUNCTION_WITH_ARGS',
         ]
 
 literals = "+-*/%()[]().,|:"
@@ -24,6 +26,14 @@ def t_FLOAT(t):
 def t_STRING(t):
     r'"(\\.|[^"])*"'
     t.value = t.value[1:-1]
+    return t
+
+def t_FUNCTION_NO_ARGS(t):
+    r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all)'
+    return t
+
+def t_FUNCTION_WITH_ARGS(t):
+    r'(split|join)'
     return t
 
 t_ignore = ' \r\n\t\f'

@@ -391,3 +391,97 @@ jq_comparison_test_cases = [
 @pytest.mark.parametrize("jq,input_data,expected_output", jq_comparison_test_cases)
 def test_jq_comparison(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
+
+jq_function_test_cases = [
+    pytest.param(
+        "abs", -42, 42,
+        id="abs function with negative number"
+    ),
+    pytest.param(
+        "abs", 42, 42,
+        id="abs function with positive number"
+    ),
+    pytest.param(
+        "ceil", 3.14, 4,
+        id="ceil function"
+    ),
+    pytest.param(
+        "floor", 3.75, 3,
+        id="floor function"
+    ),
+    pytest.param(
+        "round", 3.14, 3,
+        id="round function with rounding down"
+    ),
+    pytest.param(
+        "round", 3.75, 4,
+        id="round function with rounding up"
+    ),
+    pytest.param(
+        "sqrt", 16, 4,
+        id="sqrt function"
+    ),
+    pytest.param(
+        "length", [1,2,3], 3,
+        id="length function with array"
+    ),
+    pytest.param(
+        "length", "hello", 5,
+        id="length function with string"
+    ),
+    pytest.param(
+        "min", [5,2,8,1], 1,
+        id="min function"
+    ),
+    pytest.param(
+        "max", [5,2,8,1], 8,
+        id="max function"
+    ),
+    pytest.param(
+        "split(\",\")", "a,b,c", ["a","b","c"],
+        id="split function"
+    ),
+    pytest.param(
+        "join(\",\")", ["a","b","c"], "a,b,c",
+        id="join function"
+    ),
+    pytest.param(
+        "todate", 1672531200, "2023-01-01T00:00:00Z",
+        id="todate function"
+    ),
+    pytest.param(
+        "fromdate", "2023-01-01T00:00:00Z", 1672531200,
+        id="fromdate function"
+    ),
+    pytest.param(
+        "tonumber", "42", 42,
+        id="tonumber function"
+    ),
+    pytest.param(
+        "add", [1,2,3,4], 10,
+        id="add function"
+    ),
+    pytest.param(
+        "any", [True, False, True], True,
+        id="any function with true result"
+    ),
+    pytest.param(
+        "any", [False, False, False], False,
+        id="any function with false result"
+    ),
+    pytest.param(
+        "all", [True, True, True], True,
+        id="all function with true result"
+    ),
+    pytest.param(
+        "all", [True, False, True], False,
+        id="all function with false result"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_function_test_cases)
+def test_jq_functions(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
+
+
+

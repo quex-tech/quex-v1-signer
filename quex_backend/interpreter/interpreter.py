@@ -1,5 +1,5 @@
-from math import floor, sqrt
-from datetime import datetime
+from math import ceil, floor, sqrt
+from datetime import datetime, timezone
 
 def primitive_to_str(x):
     if type(x) == bool:
@@ -60,6 +60,10 @@ def jq_eval(obj, ast):
         return float(obj)
     elif ast.type == 'floor':
         return floor(obj)
+    elif ast.type == 'ceil':
+        return ceil(obj)
+    elif ast.type == 'round':
+        return round(obj)
     elif ast.type == 'abs':
         return abs(obj)
     elif ast.type == 'sqrt':
@@ -69,10 +73,21 @@ def jq_eval(obj, ast):
     elif ast.type == 'join':
         return jq_eval(obj, ast.children[0]).join([primitive_to_str(x) for x in obj])
     elif ast.type == 'fromdate':
-        return int(datetime.fromisoformat(jq_eval(obj, ast.children[0])))
+        return int(datetime.fromisoformat(obj).timestamp())
     elif ast.type == 'todate':
-        t = jq_eval(obj, ast.children[0])
-        return datetime.fromtimestamp(t).isoformat() + 'Z'
+        return datetime.fromtimestamp(obj, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    elif ast.type == 'add':
+        return sum(obj)
+    elif ast.type == 'any':
+        return any(obj)
+    elif ast.type == 'all':
+        return all(obj)
+    elif ast.type == 'length':
+        return len(obj)
+    elif ast.type == 'min':
+        return min(obj)
+    elif ast.type == 'max':
+        return max(obj)
     elif ast.type == 'neg':
         return -jq_eval(obj, ast.children[0])
     elif ast.type == 'round':

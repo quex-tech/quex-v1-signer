@@ -117,8 +117,8 @@ def p_array_entries(p):
 
 def p_function_call(p):
     '''
-    function_call : IDENT 
-        | IDENT '(' exp ')'
+    function_call : FUNCTION_NO_ARGS 
+        | FUNCTION_WITH_ARGS '(' exp ')'
     '''
     p[0] = Node(p[1], [])
     if len(p) > 2:
