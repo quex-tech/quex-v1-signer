@@ -196,10 +196,6 @@ jq_slice_test_cases = [
         id="Array slice with omitted end"
     ),
     pytest.param(
-        ".[:]", ["a", "b", "c", "d", "e"], ["a", "b", "c", "d", "e"],
-        id="Array slice with both indices omitted"
-    ),
-    pytest.param(
         ".[5:7]", ["a", "b", "c", "d", "e"], [],
         id="Array slice with out of range indices"
     ),

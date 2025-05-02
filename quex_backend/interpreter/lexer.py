@@ -8,11 +8,14 @@ tokens = [
         'FLOAT',
         'FUNCTION_NO_ARGS',
         'FUNCTION_WITH_ARGS',
+        'COMPARISON_OPERATOR',
+        'VALUE'
         ]
 
 literals = "+-*/%()[]().,|:"
 
 t_IDENT = r'[a-zA-Z_]\w*'
+
 def t_INT(t):
     r'\d+'
     t.value = int(t.value)
@@ -34,6 +37,14 @@ def t_FUNCTION_NO_ARGS(t):
 
 def t_FUNCTION_WITH_ARGS(t):
     r'(split|join)'
+    return t
+
+def t_COMPARISON_OPERATOR(t):
+    r'(==|!=|>=|<=|>|<)'
+    return t
+
+def t_VALUE(t):
+    r'(true|false|null)'
     return t
 
 t_ignore = ' \r\n\t\f'

@@ -39,6 +39,8 @@ def p_object(p):
         | unary_exp
         | pipe
         | root_select
+        | comparison
+        | value
     '''
     if p[1] == '.':
         p[0] = Node('.', [])
@@ -129,5 +131,17 @@ def p_pipe(p):
     pipe : exp '|' exp
     '''
     p[0] = Node('pipe', [p[1], p[3]])
+
+def p_comparison(p):
+    '''
+    comparison : exp COMPARISON_OPERATOR exp
+    '''
+    p[0] = Node(p[2], [p[1], p[3]])
+
+def p_value(p):
+    '''
+    value : VALUE
+    '''
+    p[0] = Node(p[1], [])
 
 parser = yacc.yacc()

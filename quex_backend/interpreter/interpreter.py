@@ -18,6 +18,12 @@ def jq_eval(obj, ast):
         return ast.children[0]
     elif ast.type == 'ident':
         return ast.children[0]
+    elif ast.type == 'true':
+        return True
+    elif ast.type == 'false':
+        return False
+    elif ast.type == 'null':
+        return None
     elif ast.type == '.':
         return obj
     elif ast.type == '+':
@@ -92,3 +98,15 @@ def jq_eval(obj, ast):
         return -jq_eval(obj, ast.children[0])
     elif ast.type == 'round':
         return round(obj)
+    elif ast.type == '==':
+        return jq_eval(obj, ast.children[0]) == jq_eval(obj, ast.children[1])
+    elif ast.type == '!=':
+        return jq_eval(obj, ast.children[0]) != jq_eval(obj, ast.children[1])
+    elif ast.type == '>=':
+        return jq_eval(obj, ast.children[0]) >= jq_eval(obj, ast.children[1])
+    elif ast.type == '<=':
+        return jq_eval(obj, ast.children[0]) <= jq_eval(obj, ast.children[1])
+    elif ast.type == '>':
+        return jq_eval(obj, ast.children[0]) > jq_eval(obj, ast.children[1])
+    elif ast.type == '<':
+        return jq_eval(obj, ast.children[0]) < jq_eval(obj, ast.children[1])
