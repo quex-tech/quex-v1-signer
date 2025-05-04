@@ -13,6 +13,7 @@ def perform_jq_filter_test(jq, input_data, expected_output):
         expected_output: expected output
     """
     ast = parser.parse(jq)
+    print(ast)
     result = jq_eval(input_data, ast)
     assert result == expected_output, f"Failed test case:\nJq filter: {jq}\nInput: {input_data}\nExpected: {expected_output}\nGot: {result}"
 
@@ -133,6 +134,10 @@ test_cases = [
 
 jq_index_identifier_test_cases = [
     pytest.param(
+        ".", "Hello, world!", "Hello, world!",
+        id="Root identifier"
+    ),
+    pytest.param(
         ".foo", {"foo": 42, "bar": "less interesting data"}, 42,
         id="Object Identifier-Index, depth 1"
     ),
@@ -145,8 +150,12 @@ jq_index_identifier_test_cases = [
         id="Object Identifier-Index, non-existing field"
     ),
     pytest.param(
+        ".\"foo\"", {"foo": 42}, 42,
+        id="Object index with string literal"
+    ),
+    pytest.param(
         ".[\"foo\"]", {"foo": 42}, 42,
-        id="Object index"
+        id="Object index with bracket notation"
     ),
     pytest.param(
         ".[0]", [{"name": "JSON", "good": True}, {"name": "XML", "good": False}], {"name": "JSON", "good": True},
@@ -162,6 +171,22 @@ jq_index_identifier_test_cases = [
     pytest.param(
         ".[-3]", [{"name": "JSON", "good": True}, {"name": "XML", "good": False}], None,
         id="Array index, negative index, out of range"),
+    pytest.param(
+        ".foo.bar.baz", {"foo": {"bar": {"baz": 42}}}, 42,
+        id="Object index chain with dot notation"
+    ),
+    pytest.param(
+        ".[\"foo\"][\"bar\"][\"baz\"]", {"foo": {"bar": {"baz": 42}}}, 42,
+        id="Object index chain with bracket notation"
+    ),
+    pytest.param(
+        ".[\"foo\"].[\"bar\"].[\"baz\"]", {"foo": {"bar": {"baz": 42}}}, 42,
+        id="Object index chain with bracket notation with dot notation"
+    ),
+    pytest.param(
+        ".foo.\"bar\".[\"baz\"][\"qux\"]", {"foo": {"bar": {"baz": {"qux": 42}}}}, 42,
+        id="Object index chain with mixed notation"
+    ),
 ]
 
 
@@ -480,4 +505,73 @@ def test_jq_functions(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
 
 
+jq_array_test_cases = [
+    pytest.param(
+        "[1,2,3]", None, [1,2,3],
+        id="simple array construction"
+    ),
+    pytest.param(
+        "[1, 2 + 3, 4 * 2]", None, [1,5,8],
+        id="array with expressions"
+    ),
+    pytest.param(
+        "[]", None, [],
+        id="empty array"
+    ),
+    pytest.param(
+        "[1, [2,3], 4]", None, [1,[2,3],4], 
+        id="nested array"
+    ),
+    pytest.param(
+        "[.a, .b, .c]", {"a": 1, "b": 2, "c": 3}, [1,2,3],
+        id="array from object fields"
+    ),
+    pytest.param(
+        "[.[0], .[2]]", [10,20,30,40], [10,30],
+        id="array from array indices"
+    ),
+    pytest.param(
+        "[.foo, 2, .bar]", {"foo": "a", "bar": "b"}, ["a",2,"b"],
+        id="array mixing literals and selections"
+    ),
+    pytest.param(
+        "[.[]|.*2]", [1,2,3], [2,4,6],
+        id="array from iterator with transformation"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_array_test_cases)
+def test_jq_array_construction(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
+
+jq_pipe_test_cases = [
+    pytest.param(
+        ".[] | . * 2", [1,2,3], [2,4,6],
+        id="pipe with iterator and multiplication"
+    ),
+    pytest.param(
+        ".foo | length", {"foo": [1,2,3,4]}, 4,
+        id="pipe with object access and length"
+    ),
+    pytest.param(
+        ". | tonumber", "123", 123.0,
+        id="pipe with identity and tonumber"
+    ),
+    pytest.param(
+        ".[] | . > 2", [1,2,3,4], [False,False,True,True],
+        id="pipe with comparison"
+    ),
+    pytest.param(
+        ".a | . + 1 | . * 2", {"a": 5}, 12,
+        id="multiple pipes"
+    ),
+    pytest.param(
+        ".[] | . | length", ["abc", "defgh"], [3,5],
+        id="pipe with iterator and nested operations"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_pipe_test_cases)
+def test_jq_pipe(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
 
