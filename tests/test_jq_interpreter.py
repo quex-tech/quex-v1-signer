@@ -668,3 +668,9 @@ jq_map_test_cases = [
 @pytest.mark.parametrize("jq,input_data,expected_output", jq_map_test_cases)
 def test_jq_map(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
+
+def test_lexer_unknown_token():
+    with pytest.raises(SyntaxError) as exc_info:
+        perform_jq_filter_test("$", [], [])
+    assert "Illegal character '$' at position 0" in str(exc_info.value)
+

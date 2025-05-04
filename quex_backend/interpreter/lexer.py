@@ -59,7 +59,7 @@ def t_STRING(t):
 t_ignore = ' \r\n\t\f'
 
 def t_error(t):
-    print(f"Illegal character: {t.value[0]}")
-    t.lexer.skip(1)
+    raise SyntaxError(f"Illegal character '{t.value[0]}' at position {t.lexpos}")
+
 
 lexer = lex.lex(reflags=re.UNICODE | re.DOTALL)
