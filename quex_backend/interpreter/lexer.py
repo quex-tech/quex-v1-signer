@@ -25,7 +25,7 @@ literals = "+-*/%()[]().,|:"
 
 t_VALUE = r'(true|false|null)'
 t_FUNCTION_NO_ARGS = r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all)'
-t_FUNCTION_WITH_ARGS = r'(split|join)'
+t_FUNCTION_WITH_ARGS = r'(split|join|map)'
 
 t_OR = r'or'
 t_AND = r'and'

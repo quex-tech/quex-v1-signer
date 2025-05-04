@@ -575,3 +575,96 @@ jq_pipe_test_cases = [
 def test_jq_pipe(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
 
+jq_precedence_test_cases = [
+    pytest.param(
+        "2 + 3 * 4", None, 14,
+        id="multiplication before addition"
+    ),
+    pytest.param(
+        "(2 + 3) * 4", None, 20, 
+        id="parentheses override precedence"
+    ),
+    pytest.param(
+        "1 + 2 + 3", None, 6,
+        id="left associative addition"
+    ),
+    pytest.param(
+        "8 - 4 - 2", None, 2,
+        id="left associative subtraction"
+    ),
+    pytest.param(
+        "2 * 3 + 4 * 5", None, 26,
+        id="multiplication before addition, multiple terms"
+    ),
+    pytest.param(
+        "1 + 2 == 3", None, True,
+        id="arithmetic before comparison"
+    ),
+    pytest.param(
+        "true and false or true", None, True,
+        id="and before or"
+    ),
+    pytest.param(
+        "false or true and true", None, True,
+        id="and before or, different order"
+    ),
+    pytest.param(
+        ".foo | . + 1 | . * 2", {"foo": 5}, 12,
+        id="pipe chains left to right"
+    ),
+    pytest.param(
+        "1 // 2 // 3", None, 1,
+        id="alternative operator chains right to left"
+    ),
+    pytest.param(
+        "null // null // 3", None, 3,
+        id="alternative operator with nulls"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_precedence_test_cases)
+def test_jq_precedence(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
+
+jq_map_test_cases = [
+    pytest.param(
+        "map(.)", [1, 2, 3], [1, 2, 3],
+        id="map identity"
+    ),
+    pytest.param(
+        "map(.+1)", [1, 2, 3], [2, 3, 4],
+        id="map with arithmetic"
+    ),
+    pytest.param(
+        "map(.*2)", [1, 2, 3], [2, 4, 6], 
+        id="map with multiplication"
+    ),
+    pytest.param(
+        "map(.foo)", [{"foo": 1}, {"foo": 2}], [1, 2],
+        id="map with object access"
+    ),
+    pytest.param(
+        "map(.foo.bar)", [{"foo": {"bar": 1}}, {"foo": {"bar": 2}}], [1, 2],
+        id="map with nested object access"
+    ),
+    pytest.param(
+        "map(.[0])", [[1,2], [3,4]], [1, 3],
+        id="map with array access"
+    ),
+    pytest.param(
+        "map(. | . + 1)", [1, 2, 3], [2, 3, 4],
+        id="map with pipe"
+    ),
+    pytest.param(
+        "map(abs)", [-2, -1, 0, 1, 2], [2, 1, 0, 1, 2],
+        id="map with function"
+    ),
+    pytest.param(
+        "map(.)", {"a": 1, "b": 2}, [1,2],
+        id="map on object returns object's values"
+    ),
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_map_test_cases)
+def test_jq_map(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
