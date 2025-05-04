@@ -2,17 +2,42 @@ import ply.lex as lex
 import re
 
 tokens = [
-        'STRING', 
-        'IDENT',
-        'INT',
-        'FLOAT',
-        'FUNCTION_NO_ARGS',
-        'FUNCTION_WITH_ARGS',
-        'COMPARISON_OPERATOR',
-        'VALUE'
-        ]
+    'STRING', 
+    'IDENT',
+    'INT',
+    'FLOAT',
+    'FUNCTION_NO_ARGS',
+    'FUNCTION_WITH_ARGS',
+    'VALUE',
+    'OR',
+    'AND',
+    'NOT',
+    'EQ',
+    'NEQ',
+    'LT',
+    'LE',
+    'GT',
+    'GE',
+    'ALT'
+]
 
 literals = "+-*/%()[]().,|:"
+
+t_VALUE = r'(true|false|null)'
+t_FUNCTION_NO_ARGS = r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all)'
+t_FUNCTION_WITH_ARGS = r'(split|join)'
+
+t_OR = r'or'
+t_AND = r'and'
+t_NOT = r'not'
+
+t_EQ = r'=='
+t_NEQ = r'!='
+t_LE = r'<='
+t_GE = r'>='
+t_LT = r'<'
+t_GT = r'>'
+t_ALT = r'//'
 
 t_IDENT = r'[a-zA-Z_]\w*'
 
@@ -29,22 +54,6 @@ def t_FLOAT(t):
 def t_STRING(t):
     r'"(\\.|[^"])*"'
     t.value = t.value[1:-1]
-    return t
-
-def t_FUNCTION_NO_ARGS(t):
-    r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all)'
-    return t
-
-def t_FUNCTION_WITH_ARGS(t):
-    r'(split|join)'
-    return t
-
-def t_COMPARISON_OPERATOR(t):
-    r'(==|!=|>=|<=|>|<)'
-    return t
-
-def t_VALUE(t):
-    r'(true|false|null)'
     return t
 
 t_ignore = ' \r\n\t\f'

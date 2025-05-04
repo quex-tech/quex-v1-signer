@@ -110,3 +110,11 @@ def jq_eval(obj, ast):
         return jq_eval(obj, ast.children[0]) > jq_eval(obj, ast.children[1])
     elif ast.type == '<':
         return jq_eval(obj, ast.children[0]) < jq_eval(obj, ast.children[1])
+    elif ast.type == 'or':
+        return jq_eval(obj, ast.children[0]) or jq_eval(obj, ast.children[1])
+    elif ast.type == 'and':
+        return jq_eval(obj, ast.children[0]) and jq_eval(obj, ast.children[1])
+    elif ast.type == 'not':
+        return not jq_eval(obj, ast.children[0])
+    elif ast.type == '//':
+        return jq_eval(obj, ast.children[0]) or jq_eval(obj, ast.children[1])

@@ -3,9 +3,15 @@ from .lexer import tokens, literals
 import ply.yacc as yacc
 
 precedence = (
-    ('left', '|'),
+    ('right', '|'),
+    ('right', 'ALT'),
+    ('left', 'OR'),
+    ('left', 'AND'),
+    ('right', 'NOT'),
+    ('nonassoc', 'NEQ', 'EQ', 'LT', 'LE', 'GT', 'GE'),
     ('left', '+', '-'),
     ('left', '*', '/', '%'),
+    ('right', 'UMINUS'),
     ('left', '.'),
 )
 
@@ -39,7 +45,6 @@ def p_object(p):
         | unary_exp
         | pipe
         | root_select
-        | comparison
         | value
     '''
     if p[1] == '.':
@@ -54,6 +59,15 @@ def p_binary_exp(p):
         | exp '*' exp
         | exp '/' exp
         | exp '%' exp
+        | exp EQ exp
+        | exp NEQ exp
+        | exp LT exp
+        | exp LE exp
+        | exp GT exp
+        | exp GE exp
+        | exp AND exp
+        | exp OR exp
+        | exp ALT exp
     '''
     p[0] = Node(p[2], [p[1],p[3]])
 
@@ -78,9 +92,12 @@ def p_root_select(p):
 
 def p_unary_exp(p):
     '''
-    unary_exp : '-' exp
+    unary_exp : '-' exp %prec UMINUS
+        | NOT exp
     '''
-    p[0] = Node('neg', [p[2]])
+    if p[1] == '-':
+        p[0] = Node('neg', [p[1]])
+    p[0] = Node(p[1], [p[2]])
 
 
 def p_slice(p):
@@ -131,12 +148,6 @@ def p_pipe(p):
     pipe : exp '|' exp
     '''
     p[0] = Node('pipe', [p[1], p[3]])
-
-def p_comparison(p):
-    '''
-    comparison : exp COMPARISON_OPERATOR exp
-    '''
-    p[0] = Node(p[2], [p[1], p[3]])
 
 def p_value(p):
     '''
