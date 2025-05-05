@@ -13,7 +13,6 @@ tokens = [
     'FUNCTION_WITH_ARGS',
     'OR',
     'AND',
-    'NOT',
     'EQ',
     'NEQ',
     'LT',
@@ -21,7 +20,6 @@ tokens = [
     'GT',
     'GE',
     'ALT',
-    'ITERATOR',
 ]
 
 literals = "+-*/%()[]().,|:"
@@ -34,7 +32,6 @@ t_LT = r'<'
 t_GT = r'>'
 t_ALT = r'//'
 
-t_ITERATOR = r'\.\[]'
 
 def t_FUNCTION_NO_ARGS(t):
     r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all|not|@base64d|@base64)'

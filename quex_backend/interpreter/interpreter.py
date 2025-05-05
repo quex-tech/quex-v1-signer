@@ -22,6 +22,9 @@ def _iterate_values(obj):
         return obj.values()
     raise ValueError("Cannot iterate over type", type(obj))
 
+def _object_to_bool(obj):
+    return obj != False and obj is not None
+
 def _binop_add(left, right):
     if left is None:
         return right
@@ -74,10 +77,10 @@ def _binop_ge(left, right):
     return left >= right
 
 def _binop_or(left, right):
-    return left or right
+    return _object_to_bool(left) or _object_to_bool(right)
 
 def _binop_and(left, right):
-    return left and right
+    return _object_to_bool(left) and _object_to_bool(right)
 
 def _binop_alt(left, right):
     return left or right
@@ -132,8 +135,15 @@ def slice(obj, start, end):
         return obj[start:end]
     raise ValueError(f"Cannot slice {type(obj)}")
 
+def _func_add(obj: list):
+    if len(obj) == 0:
+        return None
+    result = obj[0]
+    for i in range(1, len(obj)):
+        result += obj[i]
+    return result
+
 def function_no_args(func, obj):
-    print("function_no_args", func, obj, type(obj))
     functions = {
         'abs': abs,
         'ceil': math.ceil,
@@ -148,8 +158,7 @@ def function_no_args(func, obj):
         'tonumber': float,
         'any': any,
         'all': all,
-        'add': sum,
-        'iterator': lambda x: JqIterator(list(x.values()) if isinstance(x, dict) else x),
+        'add': _func_add,
         'not': lambda x: not x,
         '@base64': lambda x: base64.b64encode(x.encode('utf-8')).decode('utf-8'),
         '@base64d': lambda x: base64.b64decode(x.encode('utf-8')).decode('utf-8'),
@@ -169,14 +178,13 @@ def function_no_args(func, obj):
         'any': (list,),
         'all': (list,),
         'add': (list,),
-        'iterator': (list, dict),
         'not': (bool,),
         '@base64': (str,),
         '@base64d': (str,),
     }
 
     preprocess_functions = {
-        'not': lambda x: x != False and x is not None  # object to bool
+        'not': _object_to_bool,
     }
 
     target = obj
@@ -198,10 +206,11 @@ def function_no_args(func, obj):
 def function_with_one_arg(func, obj, arg):
     functions = {
         'neg': lambda _, arg: -arg,
-        'not': lambda _, arg: not arg,
         'split': lambda obj, arg: obj.split(arg),
         'join': lambda obj, arg: arg.join([_primitive_to_str(x) for x in _iterate_values(obj)]),
         'map': lambda obj, arg: [jq_eval(x, arg) for x in _iterate_values(obj)],
+        'iterator': lambda _, arg: JqIterator(list(arg.values()) if isinstance(arg, dict) else arg),
+        'toarray': lambda _, arg: list(arg),
     }
 
     supported_obj_types = {
@@ -212,16 +221,16 @@ def function_with_one_arg(func, obj, arg):
 
     need_eval_arg = set([
         'neg',
-        'not',
         'split',
-        'join'
+        'join',
+        'iterator',
     ])
 
     supported_arg_types = {
         'neg': (int, float),
-        'not': (bool,),
         'split': (str,),
-        'join': (str,)
+        'join': (str,),
+        'iterator': (dict, list),
     }
     if func not in functions:
         raise ValueError(f"Unsupported function: {func}")

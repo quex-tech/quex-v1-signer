@@ -20,6 +20,7 @@ def p_exp(p):
     exp : atomic
         | object
         | '(' exp ')'
+        | iterator
     '''
     if len(p) == 2:
         p[0] = p[1]
@@ -46,7 +47,6 @@ def p_object(p):
         | function_call
         | binary_exp
         | unary_exp
-        | iterator
     '''
     if p[1] == '.':
         p[0] = Node('.', [])
@@ -55,9 +55,9 @@ def p_object(p):
 
 def p_iterator(p):
     '''
-    iterator : ITERATOR
+    iterator : object '[' ']'
     '''
-    p[0] = Node('func_no_args', ['iterator'])
+    p[0] = Node('func_with_one_arg', ['iterator', p[1]])
 
 def p_unary_exp(p):
     '''
@@ -105,9 +105,6 @@ def p_select(p):
         p[0] = Node('select', [p[1], p[3]])
     else:
         p[0] = Node('select', [p[1], p[4]])
-
-
-
 
 def p_slice(p):
     '''
