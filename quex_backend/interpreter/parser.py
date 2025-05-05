@@ -44,13 +44,29 @@ def p_object(p):
         | binary_exp
         | unary_exp
         | pipe
-        | root_select
         | value
+        | iterator
     '''
     if p[1] == '.':
         p[0] = Node('.', [])
     else:
         p[0] = p[1]
+
+def p_iterator(p):
+    '''
+    iterator : ITERATOR
+    '''
+    p[0] = Node('iterator', [])
+
+def p_unary_exp(p):
+    '''
+    unary_exp : '-' exp %prec UMINUS
+        | NOT exp
+    '''
+    if p[1] == '-':
+        p[0] = Node('func_with_one_arg', ['neg', p[2]])
+    else:
+        p[0] = Node('func_with_one_arg', ['not', p[2]])
 
 def p_binary_exp(p):
     '''
@@ -69,35 +85,27 @@ def p_binary_exp(p):
         | exp OR exp
         | exp ALT exp
     '''
-    p[0] = Node(p[2], [p[1],p[3]])
+    p[0] = Node("binop", [p[2], p[1],p[3]])
 
 def p_select(p):
     '''
-    select : object '.' IDENT
-           | object '[' STRING ']'
+    select : '.' IDENT
+           | '.' STRING
+           | object '.' IDENT
+           | object '.' STRING
            | object '[' exp ']'
+           | object '.' '[' exp ']'
     '''
-    if len(p) == 4:
+    if len(p) == 3:
+        p[0] = Node('select', [Node('.', []), Node('ident', [p[2]])])
+    elif len(p) == 4:
         p[0] = Node('select', [p[1], Node('ident', [p[3]])])
-    elif type(p[3]) == str:
-        p[0] = Node('select', [p[1], Node('ident', [p[3]])])
-    else:
+    elif len(p) == 5:
         p[0] = Node('select', [p[1], p[3]])
+    else:
+        p[0] = Node('select', [p[1], p[4]])
 
-def p_root_select(p):
-    '''
-    root_select  : '.' IDENT
-    '''
-    p[0] = Node('select', [Node('.', []), Node('ident', [p[2]])])
 
-def p_unary_exp(p):
-    '''
-    unary_exp : '-' exp %prec UMINUS
-        | NOT exp
-    '''
-    if p[1] == '-':
-        p[0] = Node('neg', [p[1]])
-    p[0] = Node(p[1], [p[2]])
 
 
 def p_slice(p):
@@ -107,11 +115,11 @@ def p_slice(p):
         | object '[' exp ':' ']'
     '''
     if len(p) == 6:
-        if p[3] == ':':
-            p[0] = Node('slice', [p[1], Node('atomic', [0]), p[4]])
-        else:
-            p[0] = Node('slice', [p[1], p[3]])
-    else:
+        if p[3] == ':': # [:b]
+            p[0] = Node('slice', [p[1], Node('atomic', [None]), p[4]])
+        else: # [a:]
+            p[0] = Node('slice', [p[1], p[3], Node('atomic', [None])])
+    else: # [a:b]
         p[0] = Node('slice', [p[1], p[3], p[5]])
 
 def p_array_construction(p):
@@ -127,7 +135,7 @@ def p_array_entries(p):
         | exp ',' array_entries
     '''
     if len(p) == 1:
-        p[0] = Node('array', [[]])
+        p[0] = Node('array', [])
     elif len(p) == 2:
         p[0] = Node('array', [p[1]])
     else:
@@ -139,9 +147,10 @@ def p_function_call(p):
     function_call : FUNCTION_NO_ARGS 
         | FUNCTION_WITH_ARGS '(' exp ')'
     '''
-    p[0] = Node(p[1], [])
-    if len(p) > 2:
-        p[0].children += [p[3]]
+    if len(p) == 2:
+        p[0] = Node('func_no_args', [p[1]])
+    else:
+        p[0] = Node('func_with_one_arg', [p[1], p[3]])
 
 def p_pipe(p):
     '''
@@ -154,5 +163,9 @@ def p_value(p):
     value : VALUE
     '''
     p[0] = Node(p[1], [])
+
+
+def p_error(p):
+    print(f"Syntax error: {p}")
 
 parser = yacc.yacc()

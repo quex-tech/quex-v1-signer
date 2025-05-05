@@ -18,7 +18,8 @@ tokens = [
     'LE',
     'GT',
     'GE',
-    'ALT'
+    'ALT',
+    'ITERATOR',
 ]
 
 literals = "+-*/%()[]().,|:"
@@ -38,6 +39,8 @@ t_GE = r'>='
 t_LT = r'<'
 t_GT = r'>'
 t_ALT = r'//'
+
+t_ITERATOR = r'\.\[]'
 
 t_IDENT = r'[a-zA-Z_]\w*'
 

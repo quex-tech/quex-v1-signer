@@ -1,6 +1,7 @@
 import pytest
 
 from quex_backend.interpreter import jq_eval, parser
+from quex_backend.interpreter.iterator import JqIterator
 
 
 def perform_jq_filter_test(jq, input_data, expected_output):
@@ -546,7 +547,7 @@ def test_jq_array_construction(jq, input_data, expected_output):
 
 jq_pipe_test_cases = [
     pytest.param(
-        ".[] | . * 2", [1,2,3], [2,4,6],
+        ".[] | . * 2", [1,2,3], JqIterator([2,4,6]),
         id="pipe with iterator and multiplication"
     ),
     pytest.param(
@@ -558,7 +559,7 @@ jq_pipe_test_cases = [
         id="pipe with identity and tonumber"
     ),
     pytest.param(
-        ".[] | . > 2", [1,2,3,4], [False,False,True,True],
+        ".[] | . > 2", [1,2,3,4], JqIterator([False,False,True,True]),
         id="pipe with comparison"
     ),
     pytest.param(
@@ -566,7 +567,7 @@ jq_pipe_test_cases = [
         id="multiple pipes"
     ),
     pytest.param(
-        ".[] | . | length", ["abc", "defgh"], [3,5],
+        ".[] | . | length", ["abc", "defgh"], JqIterator([3,5]),
         id="pipe with iterator and nested operations"
     )
 ]
@@ -668,6 +669,46 @@ jq_map_test_cases = [
 @pytest.mark.parametrize("jq,input_data,expected_output", jq_map_test_cases)
 def test_jq_map(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
+
+jq_iterator_test_cases = [
+    pytest.param(
+        ".[]", [1, 2, 3], JqIterator([1, 2, 3]),
+        id="iterator on array"
+    ),
+    pytest.param(
+        ".[]", {"a": 1, "b": 2}, JqIterator([1, 2]),
+        id="iterator on object returns values"
+    ),
+    pytest.param(
+        ".[]", [], JqIterator([]),
+        id="iterator on empty array returns None"
+    ),
+    pytest.param(
+        ".[] | . + 1", [1, 2, 3], JqIterator([2, 3, 4]),
+        id="iterator with pipe"
+    ),
+    pytest.param(
+        ".[] | . * 2", [1, 2, 3], JqIterator([2, 4, 6]),
+        id="iterator with multiplication"
+    ),
+    pytest.param(
+        ".[] | .foo", [{"foo": 1}, {"foo": 2}], JqIterator([1, 2]),
+        id="iterator with object access"
+    ),
+    pytest.param(
+        "[., . + 1, . + 2] | .[]", 1, JqIterator([1, 2, 3]),
+        id="iterator with array construction"
+    ),
+    pytest.param(
+        "[., . + 1, . + 2] | .[] + 1", 1, JqIterator([2, 3, 4]),
+        id="iterator with array construction and addition"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_iterator_test_cases)
+def test_jq_iterator(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
+
 
 def test_lexer_unknown_token():
     with pytest.raises(SyntaxError) as exc_info:

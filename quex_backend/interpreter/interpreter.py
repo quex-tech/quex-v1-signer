@@ -1,7 +1,10 @@
 from math import ceil, floor, sqrt
 from datetime import datetime, timezone
+import math
+from .iterator import JqIterator
+from .tree import Node
 
-def primitive_to_str(x):
+def _primitive_to_str(x):
     if type(x) == bool:
         return 'true' if x else 'false'
     elif type(x) == int or type(x) == float:
@@ -13,7 +16,216 @@ def primitive_to_str(x):
     else:
         raise ValueError
 
+def _iterate_values(obj):
+    if isinstance(obj, list):
+        return obj
+    if isinstance(obj, dict):
+        return obj.values()
+    raise ValueError("Cannot iterate over type", type(obj))
+
+def _binop_add(left, right):
+    print("binop_add", left, right)
+    if left is None:
+        return right
+    if right is None:
+        return left
+    if isinstance(left, list) and isinstance(right, list):
+        return left + right
+    if isinstance(left, str) and isinstance(right, str):
+        return left + right
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return left + right
+    raise ValueError(f"Cannot add {type(left)} and {type(right)} values")
+
+def _binop_sub(left, right):
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return left - right
+    raise ValueError(f"Cannot subtract {type(left)} and {type(right)} values")
+
+def _binop_mul(left, right):
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return left * right
+    raise ValueError(f"Cannot multiply {type(left)} and {type(right)} values")
+
+def _binop_div(left, right):
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return left / right
+    raise ValueError(f"Cannot divide {type(left)} and {type(right)} values")
+
+def _binop_mod(left, right):
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return left % right
+    raise ValueError(f"Cannot modulo {type(left)} and {type(right)} values")
+
+def _binop_eq(left, right):
+    return left == right
+
+def _binop_neq(left, right):
+    return left != right
+
+def _binop_lt(left, right):
+    return left < right
+
+def _binop_le(left, right):
+    return left <= right
+
+def _binop_gt(left, right):
+    return left > right
+
+def _binop_ge(left, right):
+    return left >= right
+
+def _binop_or(left, right):
+    return left or right
+
+def _binop_and(left, right):
+    return left and right
+
+def _binop_alt(left, right):
+    return left or right
+
+def binop(op, left, right):
+    operations = {
+        '+': _binop_add,
+        '-': _binop_sub,
+        '*': _binop_mul,
+        '/': _binop_div,
+        '%': _binop_mod,
+        '==': _binop_eq,
+        '!=': _binop_neq,
+        '<': _binop_lt,
+        '<=': _binop_le,
+        '>': _binop_gt,
+        '>=': _binop_ge,
+        'or': _binop_or,
+        'and': _binop_and,
+        '//': _binop_alt,
+    }
+    operation = operations[op]
+    if isinstance(left, JqIterator) and isinstance(right, JqIterator):
+        raise ValueError("Cannot perform binary operation on two iterators")
+    if isinstance(left, JqIterator):
+        return JqIterator([operation(x, right) for x in left])
+    if isinstance(right, JqIterator):
+        return JqIterator([operation(left, x) for x in right])
+    return operation(left, right)
+
+def select(obj, selector):
+    if isinstance(obj, JqIterator):
+        return JqIterator([select(x, selector) for x in obj])
+    if isinstance(obj, dict):
+        if selector in obj:
+            return obj[selector]
+        return None
+    if isinstance(obj, list):
+        if -len(obj) <= selector < len(obj):
+            return obj[selector]
+        return None
+    raise ValueError(f"Cannot select {type(obj)} with {type(selector)}")
+
+def slice(obj, start, end):
+    if isinstance(obj, (str, list)):
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(obj)
+        return obj[start:end]
+    raise ValueError(f"Cannot slice {type(obj)}")
+
+def function_no_args(func, obj):
+    print("function_no_args", func, obj, type(obj))
+    functions = {
+        'abs': abs,
+        'ceil': math.ceil,
+        'floor': math.floor,
+        'round': round,
+        'sqrt': math.sqrt,
+        'length': len,
+        'min': min,
+        'max': max,
+        'todate': lambda x: datetime.fromtimestamp(x, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'fromdate': lambda x: int(datetime.fromisoformat(x).timestamp()),
+        'tonumber': float,
+        'any': any,
+        'all': all,
+        'add': sum
+    }
+    supported_types = {
+        'abs': (int, float),
+        'ceil': (int, float),
+        'floor': (int, float),
+        'round': (int, float),
+        'sqrt': (int, float),
+        'length': (str, list),
+        'min': (list,),
+        'max': (list,),
+        'todate': (int,),
+        'fromdate': (str,),
+        'tonumber': (str, int, float),
+        'any': (list,),
+        'all': (list,),
+        'add': (list,)
+    }
+    if func not in functions:
+        raise ValueError(f"Unsupported function: {func}")
+    
+    if isinstance(obj, JqIterator):
+        return JqIterator([functions[func](x) for x in obj])
+
+    if type(obj) not in supported_types[func]:
+        raise ValueError(f"Cannot apply {func} to {type(obj)}")
+    
+    return functions[func](obj)
+
+def function_with_one_arg(func, obj, arg):
+    print("function_with_one_arg", func, obj, arg, type(obj), type(arg))
+    functions = {
+        'neg': lambda _, arg: -arg,
+        'not': lambda _, arg: not arg,
+        'split': lambda obj, arg: obj.split(arg),
+        'join': lambda obj, arg: arg.join([_primitive_to_str(x) for x in _iterate_values(obj)]),
+        'map': lambda obj, arg: [jq_eval(x, arg) for x in _iterate_values(obj)],
+    }
+
+    supported_obj_types = {
+        'split': (str,),
+        'join': (list,),
+        'map': (list, dict),
+    }
+
+    need_eval_arg = set([
+        'neg',
+        'not',
+        'split',
+        'join'
+    ])
+
+    supported_arg_types = {
+        'neg': (int, float),
+        'not': (bool,),
+        'split': (str,),
+        'join': (str,)
+    }
+    if func not in functions:
+        raise ValueError(f"Unsupported function: {func}")
+    
+    if isinstance(obj, JqIterator):
+        return JqIterator([functions[func](x, arg) for x in obj])
+    
+    if func in need_eval_arg:
+        arg = jq_eval(obj, arg)
+    
+    if func in supported_obj_types and type(obj) not in supported_obj_types[func]:
+        raise ValueError(f"Object type {type(obj)} not supported for {func}")
+    
+    if func in supported_arg_types and type(arg) not in supported_arg_types[func]:
+        raise ValueError(f"Argument type {type(arg)} not supported for {func}")
+    
+    return functions[func](obj, arg)
+
+
 def jq_eval(obj, ast):
+    print("...", type(obj), ast.type)
     if ast.type == 'atomic':
         return ast.children[0]
     elif ast.type == 'ident':
@@ -26,95 +238,39 @@ def jq_eval(obj, ast):
         return None
     elif ast.type == '.':
         return obj
-    elif ast.type == '+':
-        first = jq_eval(obj, ast.children[0])
-        second = jq_eval(obj, ast.children[1])
-        if first is None:
-            return second
-        if second is None:
-            return first
-        return first + second
-    elif ast.type == '-':
-        return jq_eval(obj, ast.children[0]) - jq_eval(obj, ast.children[1])
-    elif ast.type == '*':
-        return jq_eval(obj, ast.children[0]) * jq_eval(obj, ast.children[1])
-    elif ast.type == '/':
-        return jq_eval(obj, ast.children[0]) / jq_eval(obj, ast.children[1])
-    elif ast.type == '%':
-        return jq_eval(obj, ast.children[0]) % jq_eval(obj, ast.children[1])
+    elif ast.type == 'binop':
+        operator = ast.children[0]
+        left = jq_eval(obj, ast.children[1])
+        right = jq_eval(obj, ast.children[2])
+        return binop(operator, left, right)
     elif ast.type == 'select':
-        obj = jq_eval(obj, ast.children[0])
+        target = jq_eval(obj, ast.children[0])
         selector = jq_eval(obj, ast.children[1])
-        if type(obj) == list:
-            if -len(obj) <= selector < len(obj):
-                return obj[selector]
-            return None
-        if selector in obj:
-            return obj[selector]
-        return None
+        return select(target, selector)
     elif ast.type == 'slice':
-        if len(ast.children) == 2:
-            return jq_eval(obj, ast.children[0])[jq_eval(obj, ast.children[1]) : ]
-        return jq_eval(obj, ast.children[0])[jq_eval(obj, ast.children[1]) : jq_eval(obj, ast.children[2])]
+        target = jq_eval(obj, ast.children[0])
+        start = jq_eval(obj, ast.children[1])
+        end = jq_eval(obj, ast.children[2])
+        return slice(target, start, end)
     elif ast.type == 'pipe':
         return jq_eval(jq_eval(obj, ast.children[0]), ast.children[1])
     elif ast.type == 'array':
-        return [jq_eval(obj, x) for x in ast.children]
-    elif ast.type == 'map':
-        return [jq_eval(x, ast.children[0]) for x in obj]
-    elif ast.type == 'tonumber':
-        return float(obj)
-    elif ast.type == 'floor':
-        return floor(obj)
-    elif ast.type == 'ceil':
-        return ceil(obj)
-    elif ast.type == 'round':
-        return round(obj)
-    elif ast.type == 'abs':
-        return abs(obj)
-    elif ast.type == 'sqrt':
-        return sqrt(obj)
-    elif ast.type == 'split':
-        return obj.split(jq_eval(obj, ast.children[0]))
-    elif ast.type == 'join':
-        return jq_eval(obj, ast.children[0]).join([primitive_to_str(x) for x in obj])
-    elif ast.type == 'fromdate':
-        return int(datetime.fromisoformat(obj).timestamp())
-    elif ast.type == 'todate':
-        return datetime.fromtimestamp(obj, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    elif ast.type == 'add':
-        return sum(obj)
-    elif ast.type == 'any':
-        return any(obj)
-    elif ast.type == 'all':
-        return all(obj)
-    elif ast.type == 'length':
-        return len(obj)
-    elif ast.type == 'min':
-        return min(obj)
-    elif ast.type == 'max':
-        return max(obj)
-    elif ast.type == 'neg':
-        return -jq_eval(obj, ast.children[0])
-    elif ast.type == 'round':
-        return round(obj)
-    elif ast.type == '==':
-        return jq_eval(obj, ast.children[0]) == jq_eval(obj, ast.children[1])
-    elif ast.type == '!=':
-        return jq_eval(obj, ast.children[0]) != jq_eval(obj, ast.children[1])
-    elif ast.type == '>=':
-        return jq_eval(obj, ast.children[0]) >= jq_eval(obj, ast.children[1])
-    elif ast.type == '<=':
-        return jq_eval(obj, ast.children[0]) <= jq_eval(obj, ast.children[1])
-    elif ast.type == '>':
-        return jq_eval(obj, ast.children[0]) > jq_eval(obj, ast.children[1])
-    elif ast.type == '<':
-        return jq_eval(obj, ast.children[0]) < jq_eval(obj, ast.children[1])
-    elif ast.type == 'or':
-        return jq_eval(obj, ast.children[0]) or jq_eval(obj, ast.children[1])
-    elif ast.type == 'and':
-        return jq_eval(obj, ast.children[0]) and jq_eval(obj, ast.children[1])
-    elif ast.type == 'not':
-        return not jq_eval(obj, ast.children[0])
-    elif ast.type == '//':
-        return jq_eval(obj, ast.children[0]) or jq_eval(obj, ast.children[1])
+        result = []
+        for child in ast.children:
+            values = jq_eval(obj, child)
+            if isinstance(values, JqIterator):
+                result.extend(values)
+            else:
+                result.append(values)
+        return result
+    elif ast.type == 'func_no_args':
+        return function_no_args(ast.children[0], obj)
+    elif ast.type == 'func_with_one_arg':
+        return function_with_one_arg(ast.children[0], obj, ast.children[1])
+    elif ast.type == 'iterator':
+        if isinstance(obj, list):
+            return JqIterator(obj)
+        elif isinstance(obj, dict):
+            return JqIterator(list(obj.values()))
+        else:
+            raise ValueError("Iterator can only be applied to lists or dictionaries")
