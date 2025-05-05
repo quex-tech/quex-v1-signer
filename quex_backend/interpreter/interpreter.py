@@ -101,6 +101,8 @@ def binop(op, left, right):
         'and': _binop_and,
         '//': _binop_alt,
     }
+    if op not in operations:
+        raise ValueError(f"Unsupported operator: {op}")
     operation = operations[op]
     if isinstance(left, JqIterator) and isinstance(right, JqIterator):
         raise ValueError("Cannot perform binary operation on two iterators")
@@ -148,7 +150,9 @@ def function_no_args(func, obj):
         'tonumber': float,
         'any': any,
         'all': all,
-        'add': sum
+        'add': sum,
+        'iterator': lambda x: JqIterator(list(x.values()) if isinstance(x, dict) else x),
+        'not': lambda x: not x
     }
     supported_types = {
         'abs': (int, float),
@@ -164,16 +168,28 @@ def function_no_args(func, obj):
         'tonumber': (str, int, float),
         'any': (list,),
         'all': (list,),
-        'add': (list,)
+        'add': (list,),
+        'iterator': (list, dict),
+        'not': (bool,)
     }
+
+    preprocess_functions = {
+        'not': lambda x: x != False and x is not None  # object to bool
+    }
+
+    target = obj
+
     if func not in functions:
         raise ValueError(f"Unsupported function: {func}")
     
-    if isinstance(obj, JqIterator):
-        return JqIterator([functions[func](x) for x in obj])
+    if isinstance(target, JqIterator):
+        return JqIterator([functions[func](x) for x in target])
 
-    if type(obj) not in supported_types[func]:
-        raise ValueError(f"Cannot apply {func} to {type(obj)}")
+    if func in preprocess_functions:
+        target = preprocess_functions[func](target)
+
+    if type(target) not in supported_types[func]:
+        raise ValueError(f"Cannot apply {func} to {type(target)}")
     
     return functions[func](obj)
 
@@ -267,10 +283,5 @@ def jq_eval(obj, ast):
         return function_no_args(ast.children[0], obj)
     elif ast.type == 'func_with_one_arg':
         return function_with_one_arg(ast.children[0], obj, ast.children[1])
-    elif ast.type == 'iterator':
-        if isinstance(obj, list):
-            return JqIterator(obj)
-        elif isinstance(obj, dict):
-            return JqIterator(list(obj.values()))
-        else:
-            raise ValueError("Iterator can only be applied to lists or dictionaries")
+    else:
+        raise ValueError(f"Unknown node type: {ast.type}")

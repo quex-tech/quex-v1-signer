@@ -407,7 +407,110 @@ jq_comparison_test_cases = [
         ".a == .b or .c == .d", {"a": 5, "b": 6, "c": 3, "d": 4}, False,
         id="Combined equality comparisons with or (false case)"
     ),
+    pytest.param(
+        "not", True, False,
+        id="not operator with true value"
+    ),
+    pytest.param(
+        "not", False, True,
+        id="not operator with false value"
+    ),
+    pytest.param(
+        "not", None, True,
+        id="not operator with null value"
+    ),
+    pytest.param(
+        "not", 0, True,
+        id="not operator with zero"
+    ),
+    pytest.param(
+        "not", 1, False,
+        id="not operator with non-zero number"
+    ),
+    pytest.param(
+        "not", "", True,
+        id="not operator with empty string"
+    ),
+    pytest.param(
+        "not", "hello", False,
+        id="not operator with non-empty string"
+    ),
+    pytest.param(
+        "not", [], True,
+        id="not operator with empty array"
+    ),
+    pytest.param(
+        "not", [1,2,3], False,
+        id="not operator with non-empty array"
+    ),
+    pytest.param(
+        "not", {}, True,
+        id="not operator with empty object"
+    ),
+    pytest.param(
+        "not", {"a": 1}, False,
+        id="not operator with non-empty object"
+    ),
+    pytest.param(
+        "not | not", True, True,
+        id="not operator with pipe"
+    )
 ]
+
+jq_boolean_test_cases = [
+    pytest.param(
+        "true and true", None, True,
+        id="and with two true values"
+    ),
+    pytest.param(
+        "true and false", None, False,
+        id="and with true and false"
+    ),
+    pytest.param(
+        "false and true", None, False,
+        id="and with false and true"
+    ),
+    pytest.param(
+        "false and false", None, False,
+        id="and with two false values"
+    ),
+    pytest.param(
+        "true or true", None, True,
+        id="or with two true values"
+    ),
+    pytest.param(
+        "true or false", None, True,
+        id="or with true and false"
+    ),
+    pytest.param(
+        "false or true", None, True,
+        id="or with false and true"
+    ),
+    pytest.param(
+        "false or false", None, False,
+        id="or with two false values"
+    ),
+    pytest.param(
+        "true and (false or true)", None, True,
+        id="complex boolean expression 1"
+    ),
+    pytest.param(
+        "(true and false) or true", None, True,
+        id="complex boolean expression 2"
+    ),
+    pytest.param(
+        "true and false | not", None, True,
+        id="not with and expression"
+    ),
+    pytest.param(
+        "false or false | not", None, True,
+        id="not with or expression"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_boolean_test_cases)
+def test_jq_boolean(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
 
 
 @pytest.mark.parametrize("jq,input_data,expected_output", jq_comparison_test_cases)

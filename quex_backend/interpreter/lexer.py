@@ -6,9 +6,11 @@ tokens = [
     'IDENT',
     'INT',
     'FLOAT',
+    'TRUE',
+    'FALSE',
+    'NULL',
     'FUNCTION_NO_ARGS',
     'FUNCTION_WITH_ARGS',
-    'VALUE',
     'OR',
     'AND',
     'NOT',
@@ -24,14 +26,6 @@ tokens = [
 
 literals = "+-*/%()[]().,|:"
 
-t_VALUE = r'(true|false|null)'
-t_FUNCTION_NO_ARGS = r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all)'
-t_FUNCTION_WITH_ARGS = r'(split|join|map)'
-
-t_OR = r'or'
-t_AND = r'and'
-t_NOT = r'not'
-
 t_EQ = r'=='
 t_NEQ = r'!='
 t_LE = r'<='
@@ -42,7 +36,31 @@ t_ALT = r'//'
 
 t_ITERATOR = r'\.\[]'
 
-t_IDENT = r'[a-zA-Z_]\w*'
+def t_FUNCTION_NO_ARGS(t):
+    r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all|not)'
+    return t
+
+def t_FUNCTION_WITH_ARGS(t):
+    r'(split|join|map)'
+    return t
+
+def t_IDENT(t):
+    r'[a-zA-Z_]\w*'
+    t.type = 'IDENT'
+    if t.value == 'and':
+        t.type = 'AND'
+    elif t.value == 'or':
+        t.type = 'OR'
+    elif t.value == 'null':
+        t.type = 'NULL'
+        t.value = None
+    elif t.value == 'true':
+        t.type = 'TRUE'
+        t.value = True
+    elif t.value == 'false':
+        t.type = 'FALSE'
+        t.value = False
+    return t
 
 def t_INT(t):
     r'\d+'

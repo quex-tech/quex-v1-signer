@@ -7,12 +7,12 @@ precedence = (
     ('right', 'ALT'),
     ('left', 'OR'),
     ('left', 'AND'),
-    ('right', 'NOT'),
     ('nonassoc', 'NEQ', 'EQ', 'LT', 'LE', 'GT', 'GE'),
     ('left', '+', '-'),
     ('left', '*', '/', '%'),
     ('right', 'UMINUS'),
     ('left', '.'),
+    ('left', 'TRUE', 'FALSE', 'NULL'),
 )
 
 def p_exp(p):
@@ -31,6 +31,9 @@ def p_atomic(p):
     atomic : STRING 
         | INT
         | FLOAT
+        | TRUE
+        | FALSE
+        | NULL
     '''
     p[0] = Node('atomic', [p[1]])
 
@@ -43,8 +46,6 @@ def p_object(p):
         | function_call
         | binary_exp
         | unary_exp
-        | pipe
-        | value
         | iterator
     '''
     if p[1] == '.':
@@ -56,17 +57,13 @@ def p_iterator(p):
     '''
     iterator : ITERATOR
     '''
-    p[0] = Node('iterator', [])
+    p[0] = Node('func_no_args', ['iterator'])
 
 def p_unary_exp(p):
     '''
     unary_exp : '-' exp %prec UMINUS
-        | NOT exp
     '''
-    if p[1] == '-':
-        p[0] = Node('func_with_one_arg', ['neg', p[2]])
-    else:
-        p[0] = Node('func_with_one_arg', ['not', p[2]])
+    p[0] = Node('func_with_one_arg', ['neg', p[2]])
 
 def p_binary_exp(p):
     '''
@@ -84,8 +81,12 @@ def p_binary_exp(p):
         | exp AND exp
         | exp OR exp
         | exp ALT exp
+        | exp '|' exp
     '''
-    p[0] = Node("binop", [p[2], p[1],p[3]])
+    if p[2] == '|':
+        p[0] = Node("pipe", [p[1], p[3]])
+    else:
+        p[0] = Node("binop", [p[2], p[1], p[3]])
 
 def p_select(p):
     '''
@@ -152,20 +153,8 @@ def p_function_call(p):
     else:
         p[0] = Node('func_with_one_arg', [p[1], p[3]])
 
-def p_pipe(p):
-    '''
-    pipe : exp '|' exp
-    '''
-    p[0] = Node('pipe', [p[1], p[3]])
-
-def p_value(p):
-    '''
-    value : VALUE
-    '''
-    p[0] = Node(p[1], [])
-
 
 def p_error(p):
-    print(f"Syntax error: {p}")
+    raise ValueError(f"Syntax error: {p}")
 
 parser = yacc.yacc()
