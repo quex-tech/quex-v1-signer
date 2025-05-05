@@ -3,9 +3,8 @@ TDX_ROOT_CERT = "./root.pem"
 VAULT_MRENCLAVE = "91431ab398744f92c7b276999177ecfce188bd4834fe52f05ae29ff3852da94d"
 
 [KEY_REQUEST_MASK]
-reportmacstruct = 4
-tee_tcb_info = 3
-reserved = 0
-tdinfo_base = 199
-tdinfo_extension = 0
-
+reportmacstruct_mask = 4
+tee_tcb_info_mask = 3
+reserved_mask = 0
+tdinfo_base_mask = 199
+tdinfo_extension_mask = 0
