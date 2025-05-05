@@ -132,6 +132,10 @@ test_cases = [
     (". + .", "a", "aa")
 ]
 
+@pytest.mark.parametrize("jq,input_data,expected_output", test_cases)
+def test_jq_boolean1(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
+
 
 jq_index_identifier_test_cases = [
     pytest.param(
@@ -810,6 +814,46 @@ jq_iterator_test_cases = [
 
 @pytest.mark.parametrize("jq,input_data,expected_output", jq_iterator_test_cases)
 def test_jq_iterator(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
+
+
+jq_base64_test_cases = [
+    pytest.param(
+        "@base64", "Hello, World!", "SGVsbG8sIFdvcmxkIQ==",
+        id="base64 encode simple string"
+    ),
+    pytest.param(
+        "@base64", "Special chars: !@#$%^&*()", "U3BlY2lhbCBjaGFyczogIUAjJCVeJiooKQ==", 
+        id="base64 encode with special characters"
+    ),
+    pytest.param(
+        "@base64", "", "",
+        id="base64 encode empty string"
+    ),
+    pytest.param(
+        "@base64d", "SGVsbG8sIFdvcmxkIQ==", "Hello, World!",
+        id="base64 decode simple string"
+    ),
+    pytest.param(
+        "@base64d", "U3BlY2lhbCBjaGFyczogIUAjJCVeJiooKQ==", "Special chars: !@#$%^&*()",
+        id="base64 decode with special characters"
+    ),
+    pytest.param(
+        "@base64d", "", "",
+        id="base64 decode empty string"
+    ),
+    pytest.param(
+        "@base64d | @base64", "SGVsbG8sIFdvcmxkIQ==", "SGVsbG8sIFdvcmxkIQ==",
+        id="base64 encode then decode"
+    ),
+    pytest.param(
+        "@base64 | @base64d", "Hello, World!", "Hello, World!",
+        id="base64 decode then encode"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_base64_test_cases)
+def test_jq_base64(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
 
 

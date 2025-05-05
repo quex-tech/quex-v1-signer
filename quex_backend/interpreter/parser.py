@@ -4,6 +4,7 @@ import ply.yacc as yacc
 
 precedence = (
     ('right', '|'),
+    ('left', ','),
     ('right', 'ALT'),
     ('left', 'OR'),
     ('left', 'AND'),
@@ -12,7 +13,6 @@ precedence = (
     ('left', '*', '/', '%'),
     ('right', 'UMINUS'),
     ('left', '.'),
-    ('left', 'TRUE', 'FALSE', 'NULL'),
 )
 
 def p_exp(p):

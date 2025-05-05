@@ -37,7 +37,7 @@ t_ALT = r'//'
 t_ITERATOR = r'\.\[]'
 
 def t_FUNCTION_NO_ARGS(t):
-    r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all|not)'
+    r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all|not|@base64d|@base64)'
     return t
 
 def t_FUNCTION_WITH_ARGS(t):

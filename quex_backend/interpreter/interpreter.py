@@ -1,8 +1,7 @@
-from math import ceil, floor, sqrt
+import base64
 from datetime import datetime, timezone
 import math
 from .iterator import JqIterator
-from .tree import Node
 
 def _primitive_to_str(x):
     if type(x) == bool:
@@ -24,7 +23,6 @@ def _iterate_values(obj):
     raise ValueError("Cannot iterate over type", type(obj))
 
 def _binop_add(left, right):
-    print("binop_add", left, right)
     if left is None:
         return right
     if right is None:
@@ -152,7 +150,9 @@ def function_no_args(func, obj):
         'all': all,
         'add': sum,
         'iterator': lambda x: JqIterator(list(x.values()) if isinstance(x, dict) else x),
-        'not': lambda x: not x
+        'not': lambda x: not x,
+        '@base64': lambda x: base64.b64encode(x.encode('utf-8')).decode('utf-8'),
+        '@base64d': lambda x: base64.b64decode(x.encode('utf-8')).decode('utf-8'),
     }
     supported_types = {
         'abs': (int, float),
@@ -170,7 +170,9 @@ def function_no_args(func, obj):
         'all': (list,),
         'add': (list,),
         'iterator': (list, dict),
-        'not': (bool,)
+        'not': (bool,),
+        '@base64': (str,),
+        '@base64d': (str,),
     }
 
     preprocess_functions = {
@@ -194,7 +196,6 @@ def function_no_args(func, obj):
     return functions[func](obj)
 
 def function_with_one_arg(func, obj, arg):
-    print("function_with_one_arg", func, obj, arg, type(obj), type(arg))
     functions = {
         'neg': lambda _, arg: -arg,
         'not': lambda _, arg: not arg,
@@ -241,7 +242,6 @@ def function_with_one_arg(func, obj, arg):
 
 
 def jq_eval(obj, ast):
-    print("...", type(obj), ast.type)
     if ast.type == 'atomic':
         return ast.children[0]
     elif ast.type == 'ident':
