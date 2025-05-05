@@ -18,7 +18,7 @@ def perform_jq_filter_test(jq, input_data, expected_output):
     result = jq_eval(input_data, ast)
     assert result == expected_output, f"Failed test case:\nJq filter: {jq}\nInput: {input_data}\nExpected: {expected_output}\nGot: {result}"
 
-
+#
 # test_cases = [
 #     (".", "Hello, world!", "Hello, world!"),
 #     (".", 0.12345678901234567890123456789, 0.12345678901234567890123456789),
@@ -134,6 +134,54 @@ test_cases = [
 
 @pytest.mark.parametrize("jq,input_data,expected_output", test_cases)
 def test_jq_boolean1(jq, input_data, expected_output):
+    perform_jq_filter_test(jq, input_data, expected_output)
+
+
+jq_primitive_test_cases = [
+    pytest.param(
+        "42", None, 42,
+        id="Integer literal"
+    ),
+    pytest.param(
+        "3.14", None, 3.14,
+        id="Float literal"
+    ),
+    pytest.param(
+        "\"hello\"", None, "hello", 
+        id="String literal"
+    ),
+    pytest.param(
+        "true", None, True,
+        id="Boolean true literal"
+    ),
+    pytest.param(
+        "false", None, False,
+        id="Boolean false literal"
+    ),
+    pytest.param(
+        "null", None, None,
+        id="Null literal"
+    ),
+    pytest.param(
+        "(42)", None, 42,
+        id="Parenthesized integer"
+    ),
+    pytest.param(
+        "(\"hello\")", None, "hello",
+        id="Parenthesized string"
+    ),
+    pytest.param(
+        "(true)", None, True,
+        id="Parenthesized boolean"
+    ),
+    pytest.param(
+        "(null)", None, None,
+        id="Parenthesized null"
+    )
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_output", jq_primitive_test_cases)
+def test_jq_primitives(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
 
 
