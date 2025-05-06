@@ -1,6 +1,7 @@
 from ctypes import Structure, c_uint8, c_uint16
 
 class TdKeyRequestMask(Structure):
+    _pack_ = 1
     _fields_ = [
         ('reportmacstruct_mask', c_uint8),
         ('tee_tcb_info_mask', c_uint16),
@@ -10,6 +11,7 @@ class TdKeyRequestMask(Structure):
     ]
 
 class ReportMacStruct(Structure):
+    _pack_ = 1
     _fields_ = [
         ('reporttype', c_uint8*4),
         ('reserved1', c_uint8*12),
@@ -20,9 +22,9 @@ class ReportMacStruct(Structure):
         ('reserved2', c_uint8*32),
         ('mac', c_uint8*32)
     ]
-    _packed_ = 1
 
 class TeeTcbSvn(Structure):
+    _pack_ = 1
     _fields_ = [
         ('tdx_module_svn_minor', c_uint8),
         ('tdx_module_svn_major', c_uint8),
@@ -31,6 +33,7 @@ class TeeTcbSvn(Structure):
     ]
 
 class TeeTcbInfoStruct(Structure):
+    _pack_ = 1
     _fields_ = [
         ('valid', c_uint8*8),
         ('tee_tcb_svn', c_uint8*16),
@@ -42,6 +45,7 @@ class TeeTcbInfoStruct(Structure):
     ]
 
 class TdInfoBase(Structure):
+    _pack_ = 1
     _fields_ = [
         ('attributes', c_uint8*8),
         ('xfam', c_uint8*8),
@@ -57,17 +61,20 @@ class TdInfoBase(Structure):
     ]
 
 class TdInfoExtension(Structure):
+    _pack_ = 1
     _fields_ = [
         ('reserved', c_uint8*64)
     ]
 
 class TdInfoStruct(Structure):
+    _pack_ = 1
     _fields_ = [
         ('tdinfo_base', TdInfoBase),
         ('tdinfo_extension', TdInfoExtension)
     ]
 
 class TdReport(Structure):
+    _pack_ = 1
     _fields_ = [
         ('reportmacstruct', ReportMacStruct),
         ('tee_tcb_info', TeeTcbInfoStruct),
@@ -76,12 +83,14 @@ class TdReport(Structure):
     ]
 
 class TdKeyRequest(Structure):
+    _pack_ = 1
     _fields_ = [
         ('mask', TdKeyRequestMask),
         ('tdreport', TdReport)
     ]
 
 class TdMsg(Structure):
+    _pack_ = 1
     _fields_ = [
         ('mask', TdKeyRequestMask),
         ('tdreport', TdReport),
