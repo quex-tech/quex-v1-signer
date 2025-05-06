@@ -1,3 +1,4 @@
+import base64
 import unittest
 import json
 from pathlib import Path
@@ -10,7 +11,7 @@ from tests.client import Client
 
 
 class TestModelsEncoding(unittest.TestCase):
-    f = open(Path(__file__).parent.resolve() / 'test_vectors.json')
+    f = open(Path(__file__).parent.resolve() / 'test_vectors' / 'http_action_test_vectors.json')
     vectors = json.load(f)
 
     test_vectors = [
@@ -59,11 +60,11 @@ class TestModelsEncoding(unittest.TestCase):
 
         # Define the original HTTPRequest
         http_request = HTTPRequest(
-            method="GET",
+            method=RequestMethod.GET,
             host="api.example.com",
             path="/v1/resource",
             headers=[RequestHeader("Accept", "application/json")],
-            parameters=[{"key": "id", "value": "1"}],
+            parameters=[QueryParameter("id", "1")],
             body=b""
         )
 
@@ -77,10 +78,11 @@ class TestModelsEncoding(unittest.TestCase):
             headers=[RequestHeaderPatch("X-API-KEY", encrypted_api_key)],
             parameters=[],
             body=b"",
+            td_address=client.get_address()
         )
 
         # Create the QuexRequest
-        quex_request = QuexRequest(
+        quex_request = HTTPAction(
             request=http_request,
             patch=http_private_patch,
             schema="string",
@@ -105,25 +107,24 @@ class TestModelsEncoding(unittest.TestCase):
     def test_apply_patch_from_test_vectors(self):
         v = next(
             (v for v in self.vectors if
-             v["keccak256_hex"] == "0xa866ffb38f4eadbe3ea0bf38d783c1bcd6277bf32e060f0bd6bf6b6bc009f649"),
+             v["action_id"] == "9fce90d652626de2251a6006fcdea993d36743c6186ccaca942be99d414efcac"),
             None  # Returns None if no matching vector is found
         )
+        patch_processor = EncryptedPatchProcessor.from_hex(v["private_key"])
 
-        qr = QuexRequest.parse(v["quex_request"])
-        original_request = qr.request
-        patched_request = self.patch_processor.apply_patch(qr)
+        action = HTTPAction.parse(v["action_bytes"])
+        original_request = action.request
+        patched_request = patch_processor.apply_patch(action)
         print(f"\nOriginal request: {original_request}")
         print(f"\nPatched request : {patched_request}")
 
-        self.assertNotEqual(original_request.path, patched_request.path)
-        self.assertNotEqual(original_request.headers, patched_request.headers)
-        self.assertNotEqual(original_request.parameters, patched_request.parameters)
-        self.assertNotEqual(original_request.body, patched_request.body)
+        expected_request = v["patched_request"]
+        expected_headers = [RequestHeader(h["key"], h["value"]) for h in expected_request["headers"]]
+        expected_parameters = [QueryParameter(h["key"], h["value"]) for h in expected_request["parameters"]]
 
-        self.assertIn("patch_for_path_suffix", patched_request.path)
-        self.assertEqual(patched_request.body, b"patched body")
-        self.assertIn("my_secret_api_key", str(patched_request.headers))
-        self.assertIn("param_value_1", str(patched_request.parameters))
-        self.assertIn("param_value_2", str(patched_request.parameters))
-
-
+        self.assertEqual(patched_request.method, expected_request["method"])
+        self.assertEqual(patched_request.host, expected_request["host"])
+        self.assertEqual(patched_request.path, expected_request["path"])
+        self.assertEqual(patched_request.headers, expected_headers)
+        self.assertEqual(patched_request.parameters, expected_parameters)
+        self.assertEqual(patched_request.body, base64.b64decode(expected_request["body"]))

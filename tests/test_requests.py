@@ -133,17 +133,15 @@ class TestRequests(unittest.TestCase):
             "param3": {"nested_key": "nested_value"}
         }
         body_bytes = json.dumps(body_content).encode()
-        base64_encoded_body = base64.b64encode(body_bytes)
 
-        data = {
-            "method": "Get",
-            "host": "api.example.com",
-            "path": "/v1/resource",
-            "headers": [{"key": "Content-Type", "value": "application/json"}],
-            "parameters": [{"key": "id", "value": "1"}],
-            "body": base64_encoded_body.decode()
-        }
-        http_request = HTTPRequest.parse(data)
+        http_request = HTTPRequest(
+            method=RequestMethod.GET,
+            host="api.example.com",
+            path="/v1/resource",
+            headers=[RequestHeader("Content-Type", "application/json")],
+            parameters=[QueryParameter("id", "1")],
+            body=body_bytes
+        )
 
         # Mock response
         mock_request.return_value.status_code = 200
