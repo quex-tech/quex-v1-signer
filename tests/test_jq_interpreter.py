@@ -809,8 +809,20 @@ def test_jq_base64(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
 
 
-def test_lexer_unknown_token():
-    with pytest.raises(SyntaxError) as exc_info:
-        perform_jq_filter_test("$", [], [])
-    assert "Illegal character '$' at position 0" in str(exc_info.value)
+jq_unknown_token_test_cases = [
+    pytest.param(
+        "$", [], SyntaxError, "Illegal character '$' at position 0",
+        id="unknown token"
+    ),
+    pytest.param(
+        "$ENV", [], SyntaxError, "Illegal character '$' at position 0",
+        id="$ENV is not a valid token"
+    ),
+]
+
+@pytest.mark.parametrize("jq,input_data,expected_exception,expected_message", jq_unknown_token_test_cases)
+def test_lexer_unknown_token(jq, input_data, expected_exception, expected_message):
+    with pytest.raises(expected_exception) as exc_info:
+        perform_jq_filter_test(jq, input_data, [])
+    assert expected_message in str(exc_info.value)
 
