@@ -25,11 +25,21 @@ if os.environ.get("DEBUG"):
 else:
     from pyquex_tdx import get_quote, get_report
 
+def get_sk():
+    env_sk = os.getenv("TD_SECRET_KEY")
+    if env_sk:
+        try:
+            bytes.fromhex(env_sk)
+            return env_sk
+        except ValueError:
+            pass
+
+    return get_random_bytes(32).hex()
 
 key_file = os.environ.get("ETH_SIGNER_KEY_FILE")
 if not pathlib.Path(key_file).is_file():
     with open(key_file, 'w') as f:
-        f.write(get_random_bytes(32).hex())
+        f.write(get_sk())
 
 with open(key_file, 'r') as f:
     sk = f.read()
