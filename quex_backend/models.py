@@ -220,10 +220,11 @@ class DataItem:
 class OracleMessage(ABIEncodable):
     action_id: bytes
     data_item: DataItem
+    relayer: str
 
     @staticmethod
     def obj_schema() -> str:
-        return f"(bytes32,{DataItem.obj_schema()})"
+        return f"(bytes32,{DataItem.obj_schema()},address)"
 
     def sign_with_account(self, account: Account):
         msg = self.bytes()
