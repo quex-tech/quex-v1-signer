@@ -79,6 +79,7 @@ def pubkey():
 @bp.route('/query', methods=['POST'])
 def query():
     action = request.get_json()['action']
+    relayer = request.get_json()['relayer']
     qr = HTTPAction.parse(action)
     patched_http_request = patch_processor.apply_patch(qr)
     d = make_request(patched_http_request)
@@ -88,9 +89,10 @@ def query():
             data_item=DataItem(
                 timestamp=get_timestamp(),
                 error=0,
-                value=processed_response,
+                value=processed_response
                 ),
-            action_id=qr.action_id()
+            action_id=qr.action_id(),
+            relayer=relayer
             )
     sig = msg.sign_with_account(account)
     response = OracleResponse(msg=msg, sig=sig)
