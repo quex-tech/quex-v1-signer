@@ -1,3 +1,4 @@
+# ubuntu:noble-20250415.1
 FROM ubuntu@sha256:dc17125eaac86538c57da886e494a34489122fb6a3ebb6411153d742594c2ddc AS builder
 
 ARG FINAL_ROOT=/tmp/rootfs
@@ -18,6 +19,8 @@ RUN \
   repro-sources-list.sh && \
   apt install -y --update gcc python3 python3-pip ca-certificates && \
   rm -rf /var/log/* /var/cache/ldconfig/aux-cache
+
+ARG SOURCE_DATE_EPOCH
 
 COPY quex_backend ${FINAL_ROOT}/opt/quex-v1-signer/quex_backend
 COPY config.toml ${FINAL_ROOT}/opt/quex-v1-signer/
