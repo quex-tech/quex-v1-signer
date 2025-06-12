@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import dataclasses
 from typing import Any
 
 @dataclass
@@ -29,39 +28,6 @@ class TDQuoteHeader:
                 user_data=b[28:48],
                 )
         assert(res.version == 4)
-        assert(res.attestation_key_type == 2)
-        assert(res.qe_vendor_id == bytes.fromhex("939A7233F79C4CA9940A0DB3957F0607"))
-        return res
-
-@dataclass
-class SGXQuoteHeader:
-    version: int
-    attestation_key_type: int
-    qe_svn: int
-    pce_svn: int
-    qe_vendor_id: bytes
-    user_data: bytes
-    def serialize(self):
-        res = self.version.to_bytes(2, 'little') + \
-                self.attestation_key_type.to_bytes(2, 'little') + \
-                b'\x00'*4 + \
-                self.qe_svn.to_bytes(2, 'little') + \
-                self.pce_svn.to_bytes(2, 'little') + \
-                self.qe_vendor_id[:16].ljust(16, b'\x00') + \
-                self.user_data[:20].ljust(20, b'\x00')
-        return res
-    def deserialize(b):
-        assert(len(b) == 48)
-        assert(b[4:8] == b'\x00'*4)
-        res = SGXQuoteHeader(
-                version=int.from_bytes(b[0:2], 'little'),
-                attestation_key_type=int.from_bytes(b[2:4], 'little'),
-                qe_svn=int.from_bytes(b[8:10], 'little'),
-                pce_svn=int.from_bytes(b[10:12], 'little'),
-                qe_vendor_id=b[12:28],
-                user_data=b[28:48]
-                )
-        #assert(res.version == 4)
         assert(res.attestation_key_type == 2)
         assert(res.qe_vendor_id == bytes.fromhex("939A7233F79C4CA9940A0DB3957F0607"))
         return res
@@ -276,30 +242,6 @@ class ECDSA256QuoteSignatureData:
                 self.qe_certification_data.serialize()
 
 @dataclass
-class SGXQuoteSignatureData:
-    isv_enclave_report_signature: P256Signature
-    ecdsa_attestation_key: P256PublicKey
-    qe_report: EnclaveReportBody
-    qe_report_signature: P256Signature
-    qe_authentication_data: QEAuthenticationData
-    qe_certification_data: QECertificationData
-    def deserialize(b):
-        auth_data=QEAuthenticationData.deserialize(b[576:])
-        return SGXQuoteSignatureData(
-                isv_enclave_report_signature=P256Signature.deserialize(b[:64]),
-                ecdsa_attestation_key=P256PublicKey.deserialize(b[64:128]),
-                qe_report=EnclaveReportBody.deserialize(b[128:512]),
-                qe_report_signature=P256Signature.deserialize(b[512:576]),
-                qe_authentication_data=auth_data,
-                qe_certification_data=QECertificationData.deserialize(b[576+2+auth_data.size:])
-                )
-    def serialize(self):
-        return self.isv_enclave_report_signature + \
-            self.ecdsa_attestation_key + self.qe_report.to_bytes() + \
-            self.qe_report_signature + self.qe_authentication_data.to_bytes() + \
-            self.qe_certification_data.to_bytes()
-
-@dataclass
 class TDQuote:
     quote_header: TDQuoteHeader
     td_quote_body: TDQuoteBody
@@ -320,29 +262,5 @@ class TDQuote:
         sig_data = self.quote_signature_data.serialize()
         return self.quote_header.serialize() + \
                 self.td_quote_body.serialize() + \
-                len(sig_data).to_bytes(4, 'little') + \
-                sig_data
-
-@dataclass
-class SGXQuote:
-    quote_header: SGXQuoteHeader
-    isv_enclave_report: EnclaveReportBody
-    quote_signature_data_len: int
-    quote_signature_data: SGXQuoteSignatureData
-    def deserialize(b):
-        header = SGXQuoteHeader.deserialize(b[:48])
-        isv_enclave_report = EnclaveReportBody.deserialize(b[48:432])
-        sig_len = int.from_bytes(b[432:436], 'little')
-        sig_data = SGXQuoteSignatureData.deserialize(b[436:436+sig_len])
-        return SGXQuote(
-                quote_header=header,
-                isv_enclave_report=isv_enclave_report,
-                quote_signature_data_len=sig_len,
-                quote_signature_data=sig_data
-                )
-    def serialize(self):
-        sig_data = self.quote_signature_data.serialize()
-        return self.quote_header.serialize() + \
-                self.isv_enclave_report.serialize() + \
                 len(sig_data).to_bytes(4, 'little') + \
                 sig_data
