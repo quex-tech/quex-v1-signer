@@ -19,6 +19,27 @@
     "raw_action": {
       "request": {
         "method": "Get",
+        "host": "api.binance.com",
+        "path": "/api/v3/avgPrice?",
+        "headers": [],
+        "parameters": [
+          {
+            "key": "symbol",
+            "value": "ETHBTC"
+          }
+        ],
+        "body": ""
+      },
+      "patch": {},
+      "schema": "int256",
+      "filter": ".price | tonumber * 1000000 | round"
+    },
+    "description": "Example from readme file"
+  },
+  {
+    "raw_action": {
+      "request": {
+        "method": "Get",
         "host": "www.binance.com",
         "path": "/api/v3/depth",
         "headers": [],
