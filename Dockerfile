@@ -68,6 +68,7 @@ for libname in c crypto dl expat ffi gcc_s m pthread rt ssl tdx_attest z; do
 done
 
 cp -a /etc/ssl ${FINAL_ROOT}/etc/
+cp -a /etc/services ${FINAL_ROOT}/etc/
 cp -a /usr/lib/ssl ${FINAL_ROOT}/usr/lib/
 cp -a /usr/share/ca-certificates ${FINAL_ROOT}/usr/share/
 
