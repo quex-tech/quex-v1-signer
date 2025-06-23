@@ -162,6 +162,9 @@ def function_no_args(func, obj):
         'not': lambda x: not x,
         '@base64': lambda x: base64.b64encode(x.encode('utf-8')).decode('utf-8'),
         '@base64d': lambda x: base64.b64decode(x.encode('utf-8')).decode('utf-8'),
+        'keys': lambda x: sorted(x.keys()),
+        'to_entries': lambda x: [{"key": a, "value": b} for a, b in x.items()],
+        'to_bytes': lambda x: x.encode('utf8')
     }
     supported_types = {
         'abs': (int, float),
@@ -181,6 +184,9 @@ def function_no_args(func, obj):
         'not': (bool,),
         '@base64': (str,),
         '@base64d': (str,),
+        'keys': (dict,),
+        'to_entries': (dict,),
+        'to_bytes': (str,),
     }
 
     preprocess_functions = {
