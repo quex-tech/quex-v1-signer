@@ -811,15 +811,15 @@ def test_jq_base64(jq, input_data, expected_output):
 
 jq_obejct_iteration_test_cases = [
     pytest.param(
-        ".keys", {"a": 1, "b": 2}, ["a", "b"],
+        "keys", {"a": 1, "b": 2}, ["a", "b"],
         id="object keys"
     ),
     pytest.param(
-        ".keys", {"b": 1, "a": 2}, ["a", "b"],
+        "keys", {"b": 1, "a": 2}, ["a", "b"],
         id="object keys, returns sorted keys"
     ),
     pytest.param(
-        ".to_entries", {"a": 1, "b": 2}, [{"key": "a", "value": 1}, {"key": "b", "value": 2}],
+        "to_entries", {"a": 1, "b": 2}, [{"key": "a", "value": 1}, {"key": "b", "value": 2}],
         id="object to entries"
     ),
 ]
@@ -830,7 +830,7 @@ def test_jq_object_iteration(jq, input_data, expected_output):
 
 jq_to_bytes_test_cases = [
     pytest.param(
-        ".to_bytes", "Hello, World!", b"Hello, World!",
+        "to_bytes", "Hello, World!", b"Hello, World!",
         id="string to bytes"
     )
 ]
@@ -838,7 +838,6 @@ jq_to_bytes_test_cases = [
 @pytest.mark.parametrize("jq,input_data,expected_output", jq_to_bytes_test_cases)
 def test_jq_to_bytes(jq, input_data, expected_output):
     perform_jq_filter_test(jq, input_data, expected_output)
-
 
 jq_unknown_token_test_cases = [
     pytest.param(
