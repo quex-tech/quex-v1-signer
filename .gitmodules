@@ -1,0 +1,3 @@
+[submodule "pyquex-tdx"]
+	path = pyquex-tdx
+	url = git@github.com:quex-tech/pyquex-tdx.git
