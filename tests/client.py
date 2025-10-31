@@ -10,17 +10,16 @@ from eth_utils import keccak
 class Client:
     def __init__(self, spk: VerifyingKey):
         self.server_public_key = spk
+        self.ephemeral_private_key = SigningKey.generate(curve=SECP256k1)
+        self.ephemeral_public_key = self.ephemeral_private_key.get_verifying_key()
 
-    def encrypt_message(self, message: bytes) -> bytes:
-        ephemeral_private_key = SigningKey.generate(curve=SECP256k1)
-        ephemeral_public_key = ephemeral_private_key.get_verifying_key().to_string()
-
+    def encrypt_message(self, message: bytes, include_ephemeral_public_key: bool = False) -> bytes:
         # Calculate the shared secret point using ECDH
-        shared_point = self.server_public_key.pubkey.point * ephemeral_private_key.privkey.secret_multiplier
+        shared_point = self.server_public_key.pubkey.point * self.ephemeral_private_key.privkey.secret_multiplier
         shared_key = shared_point.to_bytes()
 
         # Derive the symmetric key using HKDF with SHA-256
-        hkdf_input = b'\x04' + ephemeral_public_key + b'\x04' + shared_key
+        hkdf_input = b'\x04' + self.ephemeral_public_key.to_string() + b'\x04' + shared_key
         symm_key = HKDF(hkdf_input, 32, salt=None, hashmod=SHA256)
 
         # Encrypt the message using AES-GCM
@@ -28,7 +27,10 @@ class Client:
         cipher = AES.new(symm_key, AES.MODE_GCM, nonce=nonce)
         ciphertext, tag = cipher.encrypt_and_digest(message)
 
-        return ephemeral_public_key + nonce + tag + ciphertext
+        if include_ephemeral_public_key:
+            return self.ephemeral_public_key.to_string() + nonce + tag + ciphertext
+        else:
+            return nonce + tag + ciphertext
 
     def get_address(self) -> str:
         # Get the public key as bytes and strip the '04' (uncompress format ID) prefix
