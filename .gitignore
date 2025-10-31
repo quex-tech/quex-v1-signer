@@ -1,5 +1,6 @@
 venv
 quote.dat
+report.dat
 .env
 __pycache__/
 .idea
