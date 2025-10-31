@@ -87,13 +87,9 @@ class EncryptedPatchProcessor:
         Recover 64-byte (x||y) public key from a signature produced by the
         ephemeral private key that also encrypted the message.
         """
-        print("proof", proof.hex())
         ephemeral_public_key = VerifyingKey.from_string(proof[:64], curve=SECP256k1)
-        print("ephemeral_public_key", "0x" + ephemeral_public_key.to_string().hex())
         encrypted_data = proof[64:]
         decrypted_data = self.decrypt_message(encrypted_data, ephemeral_public_key)
-        print("decrypted_data", decrypted_data.hex())
-        print("action_id", action_id.hex())
         if decrypted_data != action_id:
             raise ValueError("Action ID does not match the decrypted data.")
         return ephemeral_public_key
