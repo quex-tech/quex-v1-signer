@@ -110,6 +110,14 @@ class TestUtils(unittest.TestCase):
         # Assert that the actual encoded bytes match the expected encoded bytes
         assert actual_encoded == expected_encoded
 
+    def test_process_json_invalid_jq_raises(self):
+        with self.assertRaises(JQProcessingError):
+            process_json({"value": 1}, ".value | |", "uint256")
+
+    def test_process_json_invalid_schema_raises(self):
+        with self.assertRaises(ABIEncodingError):
+            process_json({"value": "not-an-int"}, ".value", "uint256")
+
 
 if __name__ == '__main__':
     pytest.main()

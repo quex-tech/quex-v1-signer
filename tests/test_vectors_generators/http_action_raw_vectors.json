@@ -121,5 +121,52 @@
       "filter": "data.\"1\".quote.USD.price*1000000|round"
     },
     "description": "POST request with all fields. Patch with all fields. Filter with an identifier starts with number"
+  },
+  {
+    "raw_action": {
+      "request": {
+        "method": "Get",
+        "host": "api.example.com",
+        "path": "/v1/resource",
+        "headers": [],
+        "parameters": [],
+        "body": ""
+      },
+      "patch": {
+        "path_suffix": "/subpath?foo=bar"
+      },
+      "schema": "string",
+      "filter": ".status"
+    },
+    "description": "GET request with encrypted path suffix only"
+  },
+  {
+    "raw_action": {
+      "request": {
+        "method": "Post",
+        "host": "api.example.com",
+        "path": "/v1/update",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/octet-stream"
+          }
+        ],
+        "parameters": [],
+        "body": ""
+      },
+      "patch": {
+        "headers": [
+          {
+            "key": "X-Request-Signature",
+            "value": "signed-payload"
+          }
+        ],
+        "body": "eyJmb28iOiJiYXIiLCJiYXoiOjQyfQ=="
+      },
+      "schema": "bytes",
+      "filter": ".payload | @base64d"
+    },
+    "description": "POST request with encrypted header and body only"
   }
 ]

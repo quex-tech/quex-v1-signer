@@ -6,11 +6,10 @@ from pathlib import Path
 from ecdsa import VerifyingKey, SigningKey, SECP256k1
 
 from quex_backend.models import HTTPPrivatePatch, RequestHeaderPatch, QueryParameterPatch, HTTPAction, HTTPRequest, \
-    RequestMethod, RequestHeader, QueryParameter
+    RequestMethod, RequestHeader, QueryParameter, HTTPActionWithProof
 from tests.client import Client
 
-from typing import Any
-
+from typing import Any, Optional
 
 class CustomEncoder(json.JSONEncoder):
     """
@@ -90,7 +89,7 @@ def convert_request(request) -> HTTPRequest:
     )
 
 
-def prepare_patch(raw_patch, public_key: VerifyingKey) -> HTTPPrivatePatch:
+def prepare_patch(raw_patch, client: Client) -> HTTPPrivatePatch:
     path_suffix = raw_patch.get("path_suffix", "")
     headers = raw_patch["headers"] if "headers" in raw_patch else []
     parameters = raw_patch["parameters"] if "parameters" in raw_patch else []
@@ -98,8 +97,6 @@ def prepare_patch(raw_patch, public_key: VerifyingKey) -> HTTPPrivatePatch:
 
     if not path_suffix and not headers and not parameters and not body:
         return HTTPPrivatePatch(b"", [], [], b"", "0x0000000000000000000000000000000000000000")
-
-    client = Client(public_key)
 
     return HTTPPrivatePatch(
         client.encrypt_message(str.encode(path_suffix)) if path_suffix else b"",
@@ -110,13 +107,17 @@ def prepare_patch(raw_patch, public_key: VerifyingKey) -> HTTPPrivatePatch:
     )
 
 
-def prepare_action(raw_action, public_key) -> HTTPAction:
-    return HTTPAction(
+def prepare_action(raw_action, public_key) -> HTTPActionWithProof:
+    client = Client(public_key)
+    action = HTTPAction(
         convert_request(raw_action["request"]),
-        prepare_patch(raw_action["patch"], public_key),
+        prepare_patch(raw_action["patch"], client),
         raw_action["schema"],
         raw_action["filter"]
     )
+    action_id = action.action_id()
+    proof = client.encrypt_message(action_id, include_ephemeral_public_key=True)
+    return HTTPActionWithProof(action, proof)
 
 
 def create_patched_request(request, patch):
@@ -145,7 +146,7 @@ def prepare_vector(raw_vector):
 
     return {
         "description": description,
-        "action_id": action.action_id().hex(),
+        "action_id": action.action.action_id().hex(),
         "action": action,
         "action_bytes": action.bytes(),
         "patched_request": create_patched_request(raw_action["request"], raw_action["patch"]),

@@ -11,8 +11,21 @@ class TestModelsParsing(unittest.TestCase):
         f = open(Path(__file__).parent.resolve() / 'test_vectors' / 'http_action_test_vectors.json')
         vectors = json.load(f)
         for v in vectors:
-            obj = HTTPAction.parse(v["action_bytes"])
-            self.assertEqual(obj.filter, v["action"]["filter"])
+            obj = HTTPActionWithProof.parse(v["action_bytes"])
+            self.assertEqual(obj.action.filter, v["action"]["action"]["filter"])
+            self.assertEqual(obj.action.schema, v["action"]["action"]["schema"])
+            self.assertEqual(obj.action.request.method, v["action"]["action"]["request"]["method"])
+            self.assertEqual(obj.action.request.host, v["action"]["action"]["request"]["host"])
+            self.assertEqual(obj.action.request.path, v["action"]["action"]["request"]["path"])
+            self.assertEqual(obj.action.request.headers, [RequestHeader(h["key"], h["value"]) for h in v["action"]["action"]["request"]["headers"]])
+            self.assertEqual(obj.action.request.parameters, [QueryParameter(p["key"], p["value"]) for p in v["action"]["action"]["request"]["parameters"]])
+            self.assertEqual(obj.action.request.body, base64.b64decode(v["action"]["action"]["request"]["body"]))
+            self.assertEqual(obj.action.patch.path_suffix, base64.b64decode(v["action"]["action"]["patch"]["path_suffix"]))
+            self.assertEqual(obj.action.patch.headers, [RequestHeaderPatch(h["key"], base64.b64decode(h["ciphertext"])) for h in v["action"]["action"]["patch"]["headers"]])
+            self.assertEqual(obj.action.patch.parameters, [QueryParameterPatch(p["key"], base64.b64decode(p["ciphertext"])) for p in v["action"]["action"]["patch"]["parameters"]])
+            self.assertEqual(obj.action.patch.body, base64.b64decode(v["action"]["action"]["patch"]["body"]))
+            self.assertEqual(obj.action.patch.td_address, v["action"]["action"]["patch"]["td_address"])
+            self.assertEqual(obj.proof, base64.b64decode(v["action"]["proof"]))
 
 
 if __name__ == "__main__":

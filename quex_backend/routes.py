@@ -2,7 +2,7 @@ from eth_keys import keys
 from flask import Blueprint, request
 
 from quex_backend import account, get_quote, patch_processor
-from quex_backend.models import DataItem, OracleResponse, OracleMessage, HTTPAction, b64dict, QuexErrorCodes
+from quex_backend.models import DataItem, OracleResponse, OracleMessage, HTTPActionWithProof, QuexErrorCodes, b64dict
 from quex_backend.td_quote import TDQuote
 from quex_backend.utils import (
     make_request, process_json, get_timestamp, 
@@ -43,7 +43,7 @@ def query():
                 error=status_code.value,
                 value=response
                 ),
-            action_id=qr.action_id(),
+            action_id=qr.action.action_id(),
             relayer=relayer
             )
         sig = msg.sign_with_account(account)
@@ -54,11 +54,11 @@ def query():
     action = request.get_json()['action']
     relayer = request.get_json()['relayer']
     try:
-        qr = HTTPAction.parse(action)
-        patched_http_request = patch_processor.apply_patch(qr)
+        qr = HTTPActionWithProof.parse(action)
+        patched_http_request = patch_processor.apply_patch(qr.action, qr.proof)
         d = make_request(patched_http_request)
-        jq = qr.filter
-        processed_response = process_json(d, jq, qr.schema)
+        jq = qr.action.filter
+        processed_response = process_json(d, jq, qr.action.schema)
         return create_response(QuexErrorCodes.SUCCESS, processed_response)
     except EncryptedPatchProcessingError as e:
         return create_response(QuexErrorCodes.PATCH_PROCESSING_ERROR)

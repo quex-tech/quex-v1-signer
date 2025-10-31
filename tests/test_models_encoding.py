@@ -14,10 +14,10 @@ class TestModelsEncoding(unittest.TestCase):
     # check that we can serialize test vectors without errors and get the same result, as expected
     def test_HTTPAction_models_encoding(self):
         for v in self.httpaction_vectors:
-            obj = HTTPAction.parse(v["action_bytes"])
+            obj = HTTPActionWithProof.parse(v["action_bytes"])
 
             self.assertEqual(base64.b64encode(obj.bytes()).decode("ascii"), v["action_bytes"])
-            self.assertEqual(obj.action_id().hex(), v["action_id"])
+            self.assertEqual(obj.action.action_id().hex(), v["action_id"])
 
     def test_OracleMessage_encoding(self):
         for v in self.oracle_message_vectors:
