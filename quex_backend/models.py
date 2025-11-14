@@ -192,6 +192,20 @@ class HTTPAction(ABIEncodable):
 #######################################
 
 @dataclass
+class QuexErrorCodes(IntEnum):
+    SUCCESS = 0
+    PATCH_PROCESSING_ERROR = 1
+    REQUEST_CONNECTION_ERROR = 2
+    RESPONSE_4XX_ERROR = 3
+    RESPONSE_5XX_ERROR = 4
+    RESPONSE_NOT_JSON_ERROR = 5
+    JQ_PROCESSING_ERROR = 6
+    ABI_ENCODING_ERROR = 7
+    INTERNAL_OTHER_ERROR = 100
+    INTERNAL_REQUEST_PROCESSING_ERROR = 101
+    INTERNAL_GET_TIMESTAMP_ERROR = 102
+
+@dataclass
 class ETHSignature:
     r: bytes
     s: bytes

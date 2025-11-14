@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 import json
@@ -14,6 +14,7 @@ class TestVector:
     host: str
     expected_error: str = ""
     path: str = ""
+    as_json: bool = False
 
     def get_request(self) -> HTTPRequest:
         return HTTPRequest(
@@ -29,7 +30,7 @@ class TestVector:
 class TestRequests(unittest.TestCase):
     # Correct requests that should pass without errors
     correct_requests = [
-        TestVector("www.binance.com", "", "/api/v3/ticker/price"),
+        TestVector("www.binance.com", "", "/api/v3/ticker/price", as_json=True),
         TestVector("sha256.badssl.com/"),
         TestVector("sha512.badssl.com/"),
         TestVector("1000-sans.badssl.com/"),
@@ -124,45 +125,61 @@ class TestRequests(unittest.TestCase):
 
     ]
 
-    @patch("requests.Session.request")
-    def test_make_request(self, mock_request):
-        # Setup
-        body_content = {
-            "param1": "value1",
-            "param2": 42,
-            "param3": {"nested_key": "nested_value"}
-        }
-        body_bytes = json.dumps(body_content).encode()
+    mock_test_vectors = [
+        (Mock(status_code=200, json=lambda: {"key": "value"}), {"key": "value"}, None),
+        (Mock(status_code=201, json=lambda: {"key": "value"}), {"key": "value"}, None),
+        (Mock(status_code=204), "", None),
+        (Mock(status_code=400), {}, Response4XXError),
+        (Mock(status_code=500), {}, Response5XXError),
+        (Timeout(), {}, RequestConnectionError),
+    ]
 
-        http_request = HTTPRequest(
-            method=RequestMethod.GET,
-            host="api.example.com",
-            path="/v1/resource",
-            headers=[RequestHeader("Content-Type", "application/json")],
-            parameters=[QueryParameter("id", "1")],
-            body=body_bytes
-        )
+    def test_make_request(self):
+        for effect, expected_result, expected_error in self.mock_test_vectors:
+            with patch("requests.Session.request") as mock_request:
+                print(f"Testing {effect}, {expected_result}, {expected_error}")
 
-        # Mock response
-        mock_request.return_value.status_code = 200
-        mock_request.return_value.json.return_value = {"key": "value"}
+                # Setup
+                body_content = {
+                    "param1": "value1",
+                    "param2": 42,
+                    "param3": {"nested_key": "nested_value"}
+                }
+                body_bytes = json.dumps(body_content).encode()
 
-        # Call the function
-        response = make_request(http_request, as_json=True)
+                http_request = HTTPRequest(
+                    method=RequestMethod.GET,
+                    host="api.example.com",
+                    path="/v1/resource",
+                    headers=[RequestHeader("Content-Type", "application/json")],
+                    parameters=[QueryParameter("id", "1")],
+                    body=body_bytes
+                )
 
-        # Check the parameters
-        mock_request.assert_called_once_with(
-            "GET",
-            "https://api.example.com/v1/resource",
-            params={"id": "1"},
-            headers={"Content-Type": "application/json"},
-            data=body_bytes,
-            verify=True,
-            allow_redirects=False
-        )
+                # Mock response
+                if isinstance(effect, Mock):
+                    mock_request.return_value = effect
+                else:
+                    mock_request.side_effect = effect
 
-        # Check the response
-        self.assertEqual(response, {"key": "value"})
+                if expected_error is not None:
+                    with self.assertRaises(expected_error):
+                        response = make_request(http_request)
+                        print(f"Response: {response}")
+                else:
+                    response = make_request(http_request)
+                    self.assertEqual(response, expected_result)
+
+                # Check the parameters
+                mock_request.assert_called_once_with(
+                    "GET",
+                    "https://api.example.com/v1/resource",
+                    params={"id": "1"},
+                    headers={"Content-Type": "application/json"},
+                    data=body_bytes,
+                    verify=True,
+                    allow_redirects=False
+                )
 
     def test_correct_certificates(self):
         for v in self.correct_requests:
@@ -180,10 +197,10 @@ class TestRequests(unittest.TestCase):
     def check_test_vector(self, v: TestVector):
         request = v.get_request()
         try:
-            resp = make_request(request, False)
+            resp = make_request(request, as_json=False)
 
-        except Exception as e:
-            exception_string = repr(e)
+        except RequestConnectionError as e:
+            exception_string = repr(e.__cause__)
             self.assertIn(v.expected_error, exception_string)
 
         else:

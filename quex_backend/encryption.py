@@ -7,6 +7,8 @@ from ecdsa import SECP256k1, SigningKey, VerifyingKey
 
 from quex_backend.models import HTTPRequest, RequestHeader, QueryParameter
 
+class EncryptedPatchProcessingError(Exception):
+    pass
 
 class EncryptedPatchProcessor:
     def __init__(self, private_key: SigningKey):
@@ -44,28 +46,31 @@ class EncryptedPatchProcessor:
         Apply the HTTPPrivatePatch to the HTTPRequest within the QuexRequest,
         decrypting any encrypted fields and updating the HTTPRequest.
         """
-        # Get the HTTPRequest and HTTPPrivatePatch from the QuexRequest
-        http_request = deepcopy(quex_request.request)
-        http_patch = quex_request.patch
+        try:
+            # Get the HTTPRequest and HTTPPrivatePatch from the QuexRequest
+            http_request = deepcopy(quex_request.request)
+            http_patch = quex_request.patch
 
-        # Decrypt any encrypted headers and apply
-        for header_patch in http_patch.headers:
-            decrypted_value = self.decrypt_message(header_patch.ciphertext)
-            http_request.headers.append(RequestHeader(header_patch.key, decrypted_value.decode('utf-8')))
+            # Decrypt any encrypted headers and apply
+            for header_patch in http_patch.headers:
+                decrypted_value = self.decrypt_message(header_patch.ciphertext)
+                http_request.headers.append(RequestHeader(header_patch.key, decrypted_value.decode('utf-8')))
 
-        # Decrypt any encrypted parameters
-        for param_patch in http_patch.parameters:
-            decrypted_value = self.decrypt_message(param_patch.ciphertext)
-            http_request.parameters.append(QueryParameter(param_patch.key, decrypted_value.decode('utf-8')))
+            # Decrypt any encrypted parameters
+            for param_patch in http_patch.parameters:
+                decrypted_value = self.decrypt_message(param_patch.ciphertext)
+                http_request.parameters.append(QueryParameter(param_patch.key, decrypted_value.decode('utf-8')))
 
-        # Decrypt the body if it is encrypted
-        if http_patch.body:
-            decrypted_body = self.decrypt_message(http_patch.body)
-            http_request.body = decrypted_body
+            # Decrypt the body if it is encrypted
+            if http_patch.body:
+                decrypted_body = self.decrypt_message(http_patch.body)
+                http_request.body = decrypted_body
 
-        # Update the path with path_suffix if provided
-        if http_patch.path_suffix:
-            decrypted_path_suffix = self.decrypt_message(http_patch.path_suffix)
-            http_request.path += decrypted_path_suffix.decode('utf-8')
+            # Update the path with path_suffix if provided
+            if http_patch.path_suffix:
+                decrypted_path_suffix = self.decrypt_message(http_patch.path_suffix)
+                http_request.path += decrypted_path_suffix.decode('utf-8')
 
-        return http_request
+            return http_request
+        except Exception:
+            raise EncryptedPatchProcessingError
