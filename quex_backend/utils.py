@@ -15,6 +15,10 @@ c = ntplib.NTPClient()
 class RequestConnectionError(Exception):
     pass
 
+class ResponseNotSupportedResponseCodeError(Exception):
+    def __init__(self, status_code: int):
+        self.status_code = status_code
+
 class Response4XXError(Exception):
     def __init__(self, status_code: int):
         self.status_code = status_code
@@ -109,10 +113,14 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     except (ConnectionError, Timeout) as e:
         raise RequestConnectionError from e
 
-    if r.status_code >= 400 and r.status_code < 500:
+    if r.status_code >= 300 and r.status_code < 400:
+        raise ResponseNotSupportedResponseCodeError(r.status_code)
+    elif r.status_code >= 400 and r.status_code < 500:
         raise Response4XXError(r.status_code)
     elif r.status_code >= 500 and r.status_code < 600:
         raise Response5XXError(r.status_code)
+    elif r.status_code >= 600:
+        raise ResponseNotSupportedResponseCodeError(r.status_code)
 
     if r.status_code == 204:
         return ""

@@ -8,6 +8,7 @@ from quex_backend.utils import (
     make_request, process_json, get_timestamp, 
     RequestProcessingError, RequestConnectionError, Response4XXError, Response5XXError, ResponseNotJSONError, 
     JQProcessingError, ABIEncodingError, GetTimestampError,
+    ResponseNotSupportedResponseCodeError,
     )
 from quex_backend.encryption import EncryptedPatchProcessingError
 
@@ -63,6 +64,8 @@ def query():
         return create_response(QuexErrorCodes.PATCH_PROCESSING_ERROR)
     except RequestConnectionError:
         return create_response(QuexErrorCodes.REQUEST_CONNECTION_ERROR)
+    except ResponseNotSupportedResponseCodeError:
+        return create_response(QuexErrorCodes.RESPONSE_NOT_SUPPORTED_RESPONSE_CODE_ERROR)
     except Response4XXError:
         return create_response(QuexErrorCodes.RESPONSE_4XX_ERROR)
     except Response5XXError:
