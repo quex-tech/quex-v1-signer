@@ -34,19 +34,21 @@ class TestRequests(unittest.TestCase):
     correct_requests = [
         TestVector("www.binance.com", None, "", "/api/v3/ticker/price", as_json=True),
         TestVector("sha256.badssl.com/"),
-        TestVector("sha512.badssl.com/"),
-        TestVector("1000-sans.badssl.com/"),
-        TestVector("10000-sans.badssl.com/"),
         TestVector("ecc256.badssl.com/"),
         TestVector("ecc384.badssl.com/"),
         TestVector("ecc384.badssl.com/"),
         TestVector("rsa2048.badssl.com/"),
         TestVector("rsa4096.badssl.com/"),
-        TestVector("extended-validation.badssl.com/"),
         TestVector("https-everywhere.badssl.com/"),
         TestVector("long-extended-subdomain-name-containing-many-letters-and-dashes.badssl.com/"),
         TestVector("longextendedsubdomainnamewithoutdashesinordertotestwordwrapping.badssl.com/"),
         TestVector("mozilla-modern.badssl.com/"),
+
+        # These certificates are expired
+        # TestVector("sha512.badssl.com/"),
+        # TestVector("1000-sans.badssl.com/"),
+        # TestVector("10000-sans.badssl.com/"),
+        # TestVector("extended-validation.badssl.com/"),
     ]
 
     # Weak certificates, that should not be accepted, but requests passes
