@@ -13,6 +13,7 @@ from eth_utils import keccak
 
 from quex_backend.plutus.cbor import PlutusByteString, PlutusRawData, PlutusTuple
 from quex_backend.plutus.mixins import PlutusEncodable, PlutusDecodable
+from quex_backend.ride.mixins import RideDecodable, RideEncodable, write_ride_bytes
 
 
 def b64dict(obj):
@@ -78,7 +79,9 @@ class RequestMethod(IntEnum):
 
 # RequestHeader structure
 @dataclass
-class RequestHeader(ABIEncodable, PlutusEncodable, PlutusDecodable):
+class RequestHeader(
+    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
+):
     key: str
     value: str
 
@@ -89,7 +92,9 @@ class RequestHeader(ABIEncodable, PlutusEncodable, PlutusDecodable):
 
 # QueryParameter structure
 @dataclass
-class QueryParameter(ABIEncodable, PlutusEncodable, PlutusDecodable):
+class QueryParameter(
+    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
+):
     key: str
     value: str
 
@@ -100,7 +105,9 @@ class QueryParameter(ABIEncodable, PlutusEncodable, PlutusDecodable):
 
 # QueryParameterPatch structure (encrypted value in base64)
 @dataclass
-class QueryParameterPatch(ABIEncodable, PlutusEncodable, PlutusDecodable):
+class QueryParameterPatch(
+    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
+):
     key: str
     ciphertext: bytes  # Encrypted value
 
@@ -111,7 +118,9 @@ class QueryParameterPatch(ABIEncodable, PlutusEncodable, PlutusDecodable):
 
 # RequestHeaderPatch structure (encrypted value in base64)
 @dataclass
-class RequestHeaderPatch(ABIEncodable, PlutusEncodable, PlutusDecodable):
+class RequestHeaderPatch(
+    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
+):
     key: str
     ciphertext: bytes  # Encrypted value
 
@@ -122,7 +131,9 @@ class RequestHeaderPatch(ABIEncodable, PlutusEncodable, PlutusDecodable):
 
 # HTTPPrivatePatch structure
 @dataclass
-class HTTPPrivatePatch(ABIEncodable, PlutusEncodable, PlutusDecodable):
+class HTTPPrivatePatch(
+    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
+):
     path_suffix: bytes
     headers: List[RequestHeaderPatch]
     parameters: List[QueryParameterPatch]
@@ -136,7 +147,9 @@ class HTTPPrivatePatch(ABIEncodable, PlutusEncodable, PlutusDecodable):
 
 # HTTPRequest structure
 @dataclass
-class HTTPRequest(ABIEncodable, PlutusEncodable, PlutusDecodable):
+class HTTPRequest(
+    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
+):
     method: RequestMethod
     host: str
     path: str
@@ -221,6 +234,22 @@ class PlutusHTTPActionWithProof(PlutusDecodable):
         return cls.from_plutus_bytes(data)
 
 
+@dataclass
+class RideHTTPAction(HTTPAction, RideEncodable, RideDecodable):
+    def action_id(self) -> bytes:
+        return keccak(self.to_ride_bytes())
+
+
+@dataclass
+class RideHTTPActionWithProof(RideDecodable):
+    action: RideHTTPAction
+    proof: bytes
+
+    @classmethod
+    def parse(cls, data: bytes):
+        return cls.from_ride_bytes(data)
+
+
 #######################################
 # Data structures to provide response #
 #######################################
@@ -254,7 +283,7 @@ class ETHSignature:
 
 
 @dataclass
-class DataItem(PlutusEncodable):
+class DataItem(PlutusEncodable, RideEncodable):
     timestamp: int
     error: int
     value: bytes
@@ -299,6 +328,18 @@ class PlutusOracleMessage(OracleMessage, PlutusEncodable):
                 PlutusByteString(bytes.fromhex(self.relayer.removeprefix("0x"))),
             ]
         )
+
+
+class RideOracleMessage(OracleMessage, RideEncodable):
+    def sign_with_account(self, account: Account):
+        msg = self.to_ride_bytes()
+        msghash = keccak(msg)
+        return ETHSignature.fromETH(account.unsafe_sign_hash(msghash))
+
+    def write_ride_bytes(self, buf):
+        write_ride_bytes(self.action_id, buf)
+        write_ride_bytes(bytes.fromhex(self.relayer.removeprefix("0x")), buf)
+        write_ride_bytes(self.data_item, buf)
 
 
 @dataclass

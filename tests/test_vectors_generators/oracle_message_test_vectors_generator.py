@@ -2,7 +2,7 @@ import base64
 import json
 from pathlib import Path
 
-from quex_backend.models import DataItem, EthereumOracleMessage, PlutusOracleMessage
+from quex_backend.models import DataItem, EthereumOracleMessage, PlutusOracleMessage, RideOracleMessage
 
 
 def read_raw_vectors():
@@ -29,11 +29,12 @@ def build_messages(raw_vector):
     return (
         EthereumOracleMessage(**common_kwargs),
         PlutusOracleMessage(**common_kwargs),
+        RideOracleMessage(**common_kwargs),
     )
 
 
 def prepare_ethereum_vector(raw_vector):
-    msg, _ = build_messages(raw_vector)
+    msg, _, _ = build_messages(raw_vector)
     return {
         "msg": raw_vector["msg"],
         "bytes": base64.b64encode(msg.bytes()).decode("ascii"),
@@ -41,10 +42,18 @@ def prepare_ethereum_vector(raw_vector):
 
 
 def prepare_plutus_vector(raw_vector):
-    _, msg = build_messages(raw_vector)
+    _, msg, _ = build_messages(raw_vector)
     return {
         "msg": raw_vector["msg"],
         "bytes": base64.b64encode(msg.to_plutus_bytes()).decode("ascii"),
+    }
+
+
+def prepare_ride_vector(raw_vector):
+    _, _, msg = build_messages(raw_vector)
+    return {
+        "msg": raw_vector["msg"],
+        "bytes": base64.b64encode(msg.to_ride_bytes()).decode("ascii"),
     }
 
 
@@ -57,4 +66,8 @@ if __name__ == "__main__":
     save_vectors(
         "plutus_oracle_message_test_vectors.json",
         [prepare_plutus_vector(raw_vector) for raw_vector in raw_vectors],
+    )
+    save_vectors(
+        "ride_oracle_message_test_vectors.json",
+        [prepare_ride_vector(raw_vector) for raw_vector in raw_vectors],
     )
