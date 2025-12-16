@@ -14,9 +14,12 @@ from quex_backend.models import (
     PlutusHTTPActionWithProof,
     PlutusOracleMessage,
     QuexErrorCodes,
+    RideHTTPActionWithProof,
+    RideOracleMessage,
     b64dict,
 )
 from quex_backend.plutus.abi import encoder as plutus_abi_encoder
+from quex_backend.ride.abi import encoder as ride_abi_encoder
 from quex_backend.td_quote import TDQuote
 from quex_backend.utils import (
     ABIEncodingError,
@@ -76,9 +79,14 @@ def query():
 
     action = request.get_json()["action"]
     relayer = request.get_json()["relayer"]
+    fmt = request.get_json().get("format", "")
     action_bytes = b64decode(action)
 
-    if action_bytes[: len(PLUTUS_MAGIC)] == PLUTUS_MAGIC:
+    if fmt.casefold() == "ride":
+        action_cls = RideHTTPActionWithProof
+        msg_cls = RideOracleMessage
+        encode = ride_abi_encoder.encode
+    elif action_bytes[: len(PLUTUS_MAGIC)] == PLUTUS_MAGIC:
         action_cls = PlutusHTTPActionWithProof
         msg_cls = PlutusOracleMessage
         encode = plutus_abi_encoder.encode

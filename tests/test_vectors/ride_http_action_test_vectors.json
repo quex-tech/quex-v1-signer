@@ -1,0 +1,418 @@
+[
+  {
+    "description": "Minimal valid action",
+    "action_id": "041fba767297ef5032df6f74df101b309ce3e5e40cb7b007e7da0f8952eee9f8",
+    "action": {
+      "action": {
+        "request": {
+          "method": 0,
+          "host": "api.binance.com",
+          "path": "/",
+          "headers": [],
+          "parameters": [],
+          "body": ""
+        },
+        "patch": {
+          "path_suffix": "",
+          "headers": [],
+          "parameters": [],
+          "body": "",
+          "td_address": "0x0000000000000000000000000000000000000000"
+        },
+        "schema": "int256",
+        "filter": "."
+      },
+      "proof": "rFyUya6CtNfe0WSViIKM2KyN6dOqiF2r7Caa54s9wjVEA5fJ+EuAuVVO/hE6N2ogP0AUgRN5hBkSvbHREGkPoQaSoRSFz6Fv9vVdmxHhD1JagTiegs3qyEPO2hyQdQsuXMoOys6Mj6/DBbBmhVieZ935z4XIZqW6i1hZigCjcM0="
+    },
+    "action_bytes": "AAAAAAAAAAAAAAAAAAAAD2FwaS5iaW5hbmNlLmNvbQAAAAAAAAABLwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACoweDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAAAABmludDI1NgAAAAAAAAABLgAAAAAAAACArFyUya6CtNfe0WSViIKM2KyN6dOqiF2r7Caa54s9wjVEA5fJ+EuAuVVO/hE6N2ogP0AUgRN5hBkSvbHREGkPoQaSoRSFz6Fv9vVdmxHhD1JagTiegs3qyEPO2hyQdQsuXMoOys6Mj6/DBbBmhVieZ935z4XIZqW6i1hZigCjcM0=",
+    "patched_request": {
+      "method": 0,
+      "host": "api.binance.com",
+      "path": "/",
+      "headers": [],
+      "parameters": [],
+      "body": ""
+    },
+    "private_key": "579e10e7b777c2b26b6f92974b16b81702de31336b2a635dd05f2f4e1db5b2ac",
+    "public_key": "aba41fd9dee539c4db4c0fce4a7e4410bfca6b8875de1cbdc919d622a220c1523ffc21fc36b36bb792036c0331bb470576661b0020cbd79dc1e12b2c2d057e11"
+  },
+  {
+    "description": "Example from readme file",
+    "action_id": "b3b26a8fa68112b0bed4bc53411c4887962f9d394b58640def1428ab1cc6df93",
+    "action": {
+      "action": {
+        "request": {
+          "method": 0,
+          "host": "api.binance.com",
+          "path": "/api/v3/avgPrice?",
+          "headers": [],
+          "parameters": [
+            {
+              "key": "symbol",
+              "value": "ETHBTC"
+            }
+          ],
+          "body": ""
+        },
+        "patch": {
+          "path_suffix": "",
+          "headers": [],
+          "parameters": [],
+          "body": "",
+          "td_address": "0x0000000000000000000000000000000000000000"
+        },
+        "schema": "int256",
+        "filter": ".price | tonumber * 1000000 | round"
+      },
+      "proof": "labU9VPwphxppRTetbU/xG9l6m0cg1gFv3iFVGeZkl68rwT5FdyFAmPIz+DwPF6iTlRQvT2CQnY1q9VUrXbNIYzzxTecGV3u+rMAjXrRhBTMO+VGyr/QyciiXryTEQtsso9N9rB6xhrHPcg8fXwLfQoKuZtklm8PFl1JyYZMQk8="
+    },
+    "action_bytes": "AAAAAAAAAAAAAAAAAAAAD2FwaS5iaW5hbmNlLmNvbQAAAAAAAAARL2FwaS92My9hdmdQcmljZT8AAAAAAAAAAAAAAAAAAAABAAAAAAAAAAZzeW1ib2wAAAAAAAAABkVUSEJUQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMAAAAAAAAAAGaW50MjU2AAAAAAAAACMucHJpY2UgfCB0b251bWJlciAqIDEwMDAwMDAgfCByb3VuZAAAAAAAAACAlabU9VPwphxppRTetbU/xG9l6m0cg1gFv3iFVGeZkl68rwT5FdyFAmPIz+DwPF6iTlRQvT2CQnY1q9VUrXbNIYzzxTecGV3u+rMAjXrRhBTMO+VGyr/QyciiXryTEQtsso9N9rB6xhrHPcg8fXwLfQoKuZtklm8PFl1JyYZMQk8=",
+    "patched_request": {
+      "method": 0,
+      "host": "api.binance.com",
+      "path": "/api/v3/avgPrice?",
+      "headers": [],
+      "parameters": [
+        {
+          "key": "symbol",
+          "value": "ETHBTC"
+        }
+      ],
+      "body": ""
+    },
+    "private_key": "244528347ff9016e5b97b5465d9d82a5df645095bc31caba32eceafd2ed57969",
+    "public_key": "6963ef732754f6b69b2ab5063cebb4def8ccb136f04eed4b4aeb9a239b874b6621dad2167ab5ba8a3b6fff26fdc6f6a48ddae15c38d068a77c60f337c8ccd77d"
+  },
+  {
+    "description": "GET request with parameters. Without patch",
+    "action_id": "144faa24c5cb151a9b17e3a4f60aaa15ec464fd848a45090d0b19b800cd6d46f",
+    "action": {
+      "action": {
+        "request": {
+          "method": 0,
+          "host": "www.binance.com",
+          "path": "/api/v3/depth",
+          "headers": [],
+          "parameters": [
+            {
+              "key": "symbol",
+              "value": "BTCUSDT"
+            },
+            {
+              "key": "limit",
+              "value": "5"
+            }
+          ],
+          "body": ""
+        },
+        "patch": {
+          "path_suffix": "",
+          "headers": [],
+          "parameters": [],
+          "body": "",
+          "td_address": "0x0000000000000000000000000000000000000000"
+        },
+        "schema": "(uint256,(uint256,uint256)[5],(uint256,uint256)[5])",
+        "filter": "[.lastUpdateId] + ([.bids, .asks] | map(map(map(tonumber*100000000|floor))))"
+      },
+      "proof": "Mqvh84CMQKUPTT7dMl/JOb5X2qdaKJ810kSx1Kbzf6DcPUAU3THHNDoXraZe7z1+MIuwb/weZH8aYfJYyi7E5eoVihiWofJ/GHRsm6FYJ3K8qjpVpvDtugo4mzAYMDFi05XgjX4HAIUJUjhtfUL5yUSRyFKZLxuPFl7QSYB/1Ng="
+    },
+    "action_bytes": "AAAAAAAAAAAAAAAAAAAAD3d3dy5iaW5hbmNlLmNvbQAAAAAAAAANL2FwaS92My9kZXB0aAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAABnN5bWJvbAAAAAAAAAAHQlRDVVNEVAAAAAAAAAAFbGltaXQAAAAAAAAAATUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACoweDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAAAAAAAAAAMyh1aW50MjU2LCh1aW50MjU2LHVpbnQyNTYpWzVdLCh1aW50MjU2LHVpbnQyNTYpWzVdKQAAAAAAAABMWy5sYXN0VXBkYXRlSWRdICsgKFsuYmlkcywgLmFza3NdIHwgbWFwKG1hcChtYXAodG9udW1iZXIqMTAwMDAwMDAwfGZsb29yKSkpKQAAAAAAAACAMqvh84CMQKUPTT7dMl/JOb5X2qdaKJ810kSx1Kbzf6DcPUAU3THHNDoXraZe7z1+MIuwb/weZH8aYfJYyi7E5eoVihiWofJ/GHRsm6FYJ3K8qjpVpvDtugo4mzAYMDFi05XgjX4HAIUJUjhtfUL5yUSRyFKZLxuPFl7QSYB/1Ng=",
+    "patched_request": {
+      "method": 0,
+      "host": "www.binance.com",
+      "path": "/api/v3/depth",
+      "headers": [],
+      "parameters": [
+        {
+          "key": "symbol",
+          "value": "BTCUSDT"
+        },
+        {
+          "key": "limit",
+          "value": "5"
+        }
+      ],
+      "body": ""
+    },
+    "private_key": "ed9224242eb9c5be25f1acb9c352ecd39a7e55e48a6822b027bbde38e7300819",
+    "public_key": "d05a15949bd19c7ac1f64831d4d1d764b77224e353758a73e95c7931cece05f65b388b6e327b87f20243dc32ca5344301fd69262cedeb27b797e2e090761d81e"
+  },
+  {
+    "description": "GET request. Without patch. Filter with select",
+    "action_id": "398abd23b6040440fae514a543ab340a5c61e5070ef9b7189726823914907a68",
+    "action": {
+      "action": {
+        "request": {
+          "method": 0,
+          "host": "www.binance.com",
+          "path": "/api/v3/ticker/price",
+          "headers": [],
+          "parameters": [],
+          "body": ""
+        },
+        "patch": {
+          "path_suffix": "",
+          "headers": [],
+          "parameters": [],
+          "body": "",
+          "td_address": "0x0000000000000000000000000000000000000000"
+        },
+        "schema": "int256",
+        "filter": "((.[] | select(.symbol == \"ETHBTC\") | .price | tonumber) * 0.6 + (.[] | select(.symbol == \"LTCBTC\") | .price | tonumber) * 0.4) * 100000000 | floor"
+      },
+      "proof": "WHKn4UoJNkCBNwukr8k/O5QwhqaLrQ9dpyP8mUJ4fHt/IP5gj1kTyoZ+kJUWIO155gi7Tk3FddpGtvYx8JoBDJ8msLxI1VxfyaS9JOCXHEtyC35EJEIZz0Bel1LqEQ3MuIsdDFwfHuzVLZ59Y9OUAV4Hw8ZFbPRUBk8Xl582JcY="
+    },
+    "action_bytes": "AAAAAAAAAAAAAAAAAAAAD3d3dy5iaW5hbmNlLmNvbQAAAAAAAAAUL2FwaS92My90aWNrZXIvcHJpY2UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAZpbnQyNTYAAAAAAAAAkygoLltdIHwgc2VsZWN0KC5zeW1ib2wgPT0gIkVUSEJUQyIpIHwgLnByaWNlIHwgdG9udW1iZXIpICogMC42ICsgKC5bXSB8IHNlbGVjdCguc3ltYm9sID09ICJMVENCVEMiKSB8IC5wcmljZSB8IHRvbnVtYmVyKSAqIDAuNCkgKiAxMDAwMDAwMDAgfCBmbG9vcgAAAAAAAACAWHKn4UoJNkCBNwukr8k/O5QwhqaLrQ9dpyP8mUJ4fHt/IP5gj1kTyoZ+kJUWIO155gi7Tk3FddpGtvYx8JoBDJ8msLxI1VxfyaS9JOCXHEtyC35EJEIZz0Bel1LqEQ3MuIsdDFwfHuzVLZ59Y9OUAV4Hw8ZFbPRUBk8Xl582JcY=",
+    "patched_request": {
+      "method": 0,
+      "host": "www.binance.com",
+      "path": "/api/v3/ticker/price",
+      "headers": [],
+      "parameters": [],
+      "body": ""
+    },
+    "private_key": "09b0cca443bb2e519172e3c4a0996105f561b956e11ef201e27574817c33b6db",
+    "public_key": "f4ae0ce9e6a56396ba64e264e5b732f9414fe1be3be64eae1e3f1c53aa2bbb37c4a82694c905bd1d478973fa565c6aa01004a34f50f1c678b475cb058cbd8df7"
+  },
+  {
+    "description": "POST request with all fields. Patch with all fields. Filter with an identifier starts with number",
+    "action_id": "1f5bbeaf2673a4ccdf745aa24c2519161e02ad726d40ad3715fe4fb6efd3495b",
+    "action": {
+      "action": {
+        "request": {
+          "method": 1,
+          "host": "pro-api.coinmarketcap.com",
+          "path": "/v2/cryptocurrency/quotes/latest",
+          "headers": [
+            {
+              "key": "Accept",
+              "value": "application/json"
+            }
+          ],
+          "parameters": [
+            {
+              "key": "id",
+              "value": "1"
+            }
+          ],
+          "body": "AAECAw=="
+        },
+        "patch": {
+          "path_suffix": "S0prbmesU58/GoZtcpIjuitG82NYLvZfsaJoFd6aaIAZbOvu0VrGEA==",
+          "headers": [
+            {
+              "key": "X-CMC_PRO_API_KEY",
+              "ciphertext": "OQktCz+ALrXXCBQp1kYCB157Asz1S96CjHlgyi7NdSuLvEUdcNl9"
+            }
+          ],
+          "parameters": [
+            {
+              "key": "param_patch",
+              "ciphertext": "oOOlTI2YzjQ1DYwiRLa97F9RgIY4I9GKZeKjyZc8qr7T4/AM7uN4bZPREoXbNg=="
+            },
+            {
+              "key": "param_patch2",
+              "ciphertext": "7Hac0hY8XOqDu6Uxc6zCoZbAsmcgyiW/QyDe8YP0+aAB0ZeY6Ccb7CgdPBhKRzoIJg=="
+            }
+          ],
+          "body": "5nYfZnPGvhnq/limWwrm6OFLa8w1UO8jpUEqcVBteDYjSW9vcs6/",
+          "td_address": "0xe700eac9d152062968123e68d68c7bbb3f007848"
+        },
+        "schema": "(int256,int256)",
+        "filter": "data.\"1\".quote.USD.price*1000000|round"
+      },
+      "proof": "jHNPtqzokNyta+1+b3zoPsTVT5BAwocLINh1B635A7ChdlGM5I++N4chViUFIMIHJEhJAkxmX70RaW9vYZxPaOKmpuDTbEd9W/m2p1K51PIzDXNElcucqCtKvRKjcPsg0K7FsZ5He/QQKmjx1in8P8ZkZo+EdYXe/AkyCOPq3hI="
+    },
+    "action_bytes": "AAAAAAAAAAEAAAAAAAAAGXByby1hcGkuY29pbm1hcmtldGNhcC5jb20AAAAAAAAAIC92Mi9jcnlwdG9jdXJyZW5jeS9xdW90ZXMvbGF0ZXN0AAAAAAAAAAEAAAAAAAAABkFjY2VwdAAAAAAAAAAQYXBwbGljYXRpb24vanNvbgAAAAAAAAABAAAAAAAAAAJpZAAAAAAAAAABMQAAAAAAAAAEAAECAwAAAAAAAAAoS0prbmesU58/GoZtcpIjuitG82NYLvZfsaJoFd6aaIAZbOvu0VrGEAAAAAAAAAABAAAAAAAAABFYLUNNQ19QUk9fQVBJX0tFWQAAAAAAAAAnOQktCz+ALrXXCBQp1kYCB157Asz1S96CjHlgyi7NdSuLvEUdcNl9AAAAAAAAAAIAAAAAAAAAC3BhcmFtX3BhdGNoAAAAAAAAAC6g46VMjZjONDUNjCJEtr3sX1GAhjgj0Ypl4qPJlzyqvtPj8Azu43htk9EShds2AAAAAAAAAAxwYXJhbV9wYXRjaDIAAAAAAAAAMex2nNIWPFzqg7ulMXOswqGWwLJnIMolv0Mg3vGD9PmgAdGXmOgnG+woHTwYSkc6CCYAAAAAAAAAJ+Z2H2Zzxr4Z6v5YplsK5ujhS2vMNVDvI6VBKnFQbXg2I0lvb3LOvwAAAAAAAAAqMHhlNzAwZWFjOWQxNTIwNjI5NjgxMjNlNjhkNjhjN2JiYjNmMDA3ODQ4AAAAAAAAAA8oaW50MjU2LGludDI1NikAAAAAAAAAJmRhdGEuIjEiLnF1b3RlLlVTRC5wcmljZSoxMDAwMDAwfHJvdW5kAAAAAAAAAICMc0+2rOiQ3K1r7X5vfOg+xNVPkEDChwsg2HUHrfkDsKF2UYzkj743hyFWJQUgwgckSEkCTGZfvRFpb29hnE9o4qam4NNsR31b+banUrnU8jMNc0SVy5yoK0q9EqNw+yDQrsWxnkd79BAqaPHWKfw/xmRmj4R1hd78CTII4+reEg==",
+    "patched_request": {
+      "method": 1,
+      "host": "pro-api.coinmarketcap.com",
+      "path": "/v2/cryptocurrency/quotes/latest?key=123",
+      "headers": [
+        {
+          "key": "Accept",
+          "value": "application/json"
+        },
+        {
+          "key": "X-CMC_PRO_API_KEY",
+          "value": "api_key"
+        }
+      ],
+      "parameters": [
+        {
+          "key": "id",
+          "value": "1"
+        },
+        {
+          "key": "param_patch",
+          "value": "some_parameter"
+        },
+        {
+          "key": "param_patch2",
+          "value": "another_parameter"
+        }
+      ],
+      "body": "qrur/wAAAA=="
+    },
+    "private_key": "c3b8e0a4a50b2744f0f7d0a33f84b0e584edbd17cb339530ea7c8162ae7c8c2e",
+    "public_key": "ad571532fc2e84d08fc1a54a595ef93b6f1f4058b17ea470fa64b41bb6bfb6c3d1d5b38582e67f10d7f7b4713fff3c5d55627d2d3b0743c9f2a2269e6715a5b9"
+  },
+  {
+    "description": "GET request with encrypted path suffix only",
+    "action_id": "bec54fc063a67a5423d4bebe8c2492161ffaa71f9534a312aa73b928b8e605a9",
+    "action": {
+      "action": {
+        "request": {
+          "method": 0,
+          "host": "api.example.com",
+          "path": "/v1/resource",
+          "headers": [],
+          "parameters": [],
+          "body": ""
+        },
+        "patch": {
+          "path_suffix": "8o5M0ucuU4bsXJH4SEtadcrSDifSgth6dz8JecVhUlxbPiy4u6nVdxEJhn+AHyCM",
+          "headers": [],
+          "parameters": [],
+          "body": "",
+          "td_address": "0xa43f2d95a6b3e1f253030b5a964e60ae5ad5a93f"
+        },
+        "schema": "string",
+        "filter": ".status"
+      },
+      "proof": "TCKWhZTKE34g5119oQryOCEI167ocJZVuVYnwcGDYW/HyfbOHMOYz9RmGLdWfr8H/scIk/IFxHxqea4opHQnQcttOL9neRgRIuImV+TrGOav1tT/+3k7kAegdd1eJBQFYlQEUYAs9qX1jkGuMswQmZXvTs3L1VnToIXNHG4vnk4="
+    },
+    "action_bytes": "AAAAAAAAAAAAAAAAAAAAD2FwaS5leGFtcGxlLmNvbQAAAAAAAAAML3YxL3Jlc291cmNlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADDyjkzS5y5ThuxckfhIS1p1ytIOJ9KC2Hp3Pwl5xWFSXFs+LLi7qdV3EQmGf4AfIIwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKjB4YTQzZjJkOTVhNmIzZTFmMjUzMDMwYjVhOTY0ZTYwYWU1YWQ1YTkzZgAAAAAAAAAGc3RyaW5nAAAAAAAAAAcuc3RhdHVzAAAAAAAAAIBMIpaFlMoTfiDnXX2hCvI4IQjXruhwllW5VifBwYNhb8fJ9s4cw5jP1GYYt1Z+vwf+xwiT8gXEfGp5riikdCdBy204v2d5GBEi4iZX5OsY5q/W1P/7eTuQB6B13V4kFAViVARRgCz2pfWOQa4yzBCZle9OzcvVWdOghc0cbi+eTg==",
+    "patched_request": {
+      "method": 0,
+      "host": "api.example.com",
+      "path": "/v1/resource/subpath?foo=bar",
+      "headers": [],
+      "parameters": [],
+      "body": ""
+    },
+    "private_key": "a44a3503bd10fe2db663575b686aa0a6ee9cf006e9564a19f7fb960291c25d0c",
+    "public_key": "b1d2582302d5fe621b3ca9497111805d395e9255d9521a3157b1de099d2bd4064bc59f70be11a04e17f88b369ba169da45eb237d481b596f1514a25518f030e6"
+  },
+  {
+    "description": "POST request with encrypted header and body only",
+    "action_id": "45f6ce766b3f10bbc05956ce3b0a60d8c565afa42cb500599157fd1015eed499",
+    "action": {
+      "action": {
+        "request": {
+          "method": 1,
+          "host": "api.example.com",
+          "path": "/v1/update",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/octet-stream"
+            }
+          ],
+          "parameters": [],
+          "body": ""
+        },
+        "patch": {
+          "path_suffix": "",
+          "headers": [
+            {
+              "key": "X-Request-Signature",
+              "ciphertext": "uMt5LKTI8q6UBDfQRwIXIwHXxCZmza97k1GDdWy6UdYgg+h3cEnBAe77UDedqQ=="
+            }
+          ],
+          "parameters": [],
+          "body": "LcWtDUAnrX+j2cclNXuSTvYgq2eWRFUUSvuRjsOoZv2jjPXZYy2DKzswbSMxl+PjHuKvBygC",
+          "td_address": "0x183e56d8a10c480af17e8150d459ae6cb4e2599e"
+        },
+        "schema": "bytes",
+        "filter": ".payload | @base64d"
+      },
+      "proof": "y6B1SxUrewoRoPrDH5HzL9aOgye4qBNSbg9H+h/BSyu2gWnVF9ot5fGnpTzMDF8psHNyXKK0oGC38qioqPsCuzMsWLvyZw+mu1oTD/9bvcK7F4dWkZhh4lHEHfRdpKehbJXAd1e9L1bI0Ro0wbEtPW8IPvdNmkz6zy6u3sIYVVc="
+    },
+    "action_bytes": "AAAAAAAAAAEAAAAAAAAAD2FwaS5leGFtcGxlLmNvbQAAAAAAAAAKL3YxL3VwZGF0ZQAAAAAAAAABAAAAAAAAAAxDb250ZW50LVR5cGUAAAAAAAAAGGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAABNYLVJlcXVlc3QtU2lnbmF0dXJlAAAAAAAAAC64y3kspMjyrpQEN9BHAhcjAdfEJmbNr3uTUYN1bLpR1iCD6HdwScEB7vtQN52pAAAAAAAAAAAAAAAAAAAANi3FrQ1AJ61/o9nHJTV7kk72IKtnlkRVFEr7kY7DqGb9o4z12WMtgys7MG0jMZfj4x7irwcoAgAAAAAAAAAqMHgxODNlNTZkOGExMGM0ODBhZjE3ZTgxNTBkNDU5YWU2Y2I0ZTI1OTllAAAAAAAAAAVieXRlcwAAAAAAAAATLnBheWxvYWQgfCBAYmFzZTY0ZAAAAAAAAACAy6B1SxUrewoRoPrDH5HzL9aOgye4qBNSbg9H+h/BSyu2gWnVF9ot5fGnpTzMDF8psHNyXKK0oGC38qioqPsCuzMsWLvyZw+mu1oTD/9bvcK7F4dWkZhh4lHEHfRdpKehbJXAd1e9L1bI0Ro0wbEtPW8IPvdNmkz6zy6u3sIYVVc=",
+    "patched_request": {
+      "method": 1,
+      "host": "api.example.com",
+      "path": "/v1/update",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/octet-stream"
+        },
+        {
+          "key": "X-Request-Signature",
+          "value": "signed-payload"
+        }
+      ],
+      "parameters": [],
+      "body": "eyJmb28iOiJiYXIiLCJiYXoiOjQyfQ=="
+    },
+    "private_key": "000d8596097f5b6cd71bb16026d54facc6f8ffd7b1fdf62fdd3cc7ce6a677d0c",
+    "public_key": "e6b2888a1e8ae21cb9693b6a49073e82750b81f493a20fecc27f6d284eaf26cd9efd75854aac180e6e26b598b8f63836b542ab55ea046d1db8a3cf8dbef781d0"
+  },
+  {
+    "description": "GET request with encrypted parameters only",
+    "action_id": "ca5a4a36711e8b9252a994ff849a4b5ca8698fb1f323b3d8f7204bb9bd71ddcf",
+    "action": {
+      "action": {
+        "request": {
+          "method": 0,
+          "host": "api.example.com",
+          "path": "/v1/prices",
+          "headers": [],
+          "parameters": [
+            {
+              "key": "base",
+              "value": "BTC"
+            }
+          ],
+          "body": ""
+        },
+        "patch": {
+          "path_suffix": "",
+          "headers": [],
+          "parameters": [
+            {
+              "key": "quote",
+              "ciphertext": "8UUh/dpGHk4FO/gcgLeG2dOMxY360Ew2avdwtBG93V38s1Q="
+            },
+            {
+              "key": "window",
+              "ciphertext": "4BhOUJiD1S5nGPbR7IEl6M+umnVmM5+88wn1Z8pg50QmnV4="
+            }
+          ],
+          "body": "",
+          "td_address": "0xe4e8fa70461e628e3ff325a2c2f1501719e118df"
+        },
+        "schema": "(string,string)",
+        "filter": "[.symbol, .window]"
+      },
+      "proof": "e+xiIKisgYKvdIdpWPn8lCtnzn10dbgGhB+680xe8nte6PxX3l+oF32tyycIj7xdn4GQl3RFOkI+jgpZLn9vsokxMZwG85uTAU0coZuzM8ApQmRuylQP7baaNxRNmzos9WF+dSuVoVhxna2jRv+GIcfZN+eaFYFMkBbMgFN8Bv0="
+    },
+    "action_bytes": "AAAAAAAAAAAAAAAAAAAAD2FwaS5leGFtcGxlLmNvbQAAAAAAAAAKL3YxL3ByaWNlcwAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABGJhc2UAAAAAAAAAA0JUQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAVxdW90ZQAAAAAAAAAj8UUh/dpGHk4FO/gcgLeG2dOMxY360Ew2avdwtBG93V38s1QAAAAAAAAABndpbmRvdwAAAAAAAAAj4BhOUJiD1S5nGPbR7IEl6M+umnVmM5+88wn1Z8pg50QmnV4AAAAAAAAAAAAAAAAAAAAqMHhlNGU4ZmE3MDQ2MWU2MjhlM2ZmMzI1YTJjMmYxNTAxNzE5ZTExOGRmAAAAAAAAAA8oc3RyaW5nLHN0cmluZykAAAAAAAAAElsuc3ltYm9sLCAud2luZG93XQAAAAAAAACAe+xiIKisgYKvdIdpWPn8lCtnzn10dbgGhB+680xe8nte6PxX3l+oF32tyycIj7xdn4GQl3RFOkI+jgpZLn9vsokxMZwG85uTAU0coZuzM8ApQmRuylQP7baaNxRNmzos9WF+dSuVoVhxna2jRv+GIcfZN+eaFYFMkBbMgFN8Bv0=",
+    "patched_request": {
+      "method": 0,
+      "host": "api.example.com",
+      "path": "/v1/prices",
+      "headers": [],
+      "parameters": [
+        {
+          "key": "base",
+          "value": "BTC"
+        },
+        {
+          "key": "quote",
+          "value": "USD"
+        },
+        {
+          "key": "window",
+          "value": "24h"
+        }
+      ],
+      "body": ""
+    },
+    "private_key": "16d87cb64974c67f90392d2248f54989b6a20130b5fbb5e9fece1e0ff67c35cc",
+    "public_key": "2e00eb030e2bd5a364e8b2c51e8fa797f5dd879f652f09dd99eaa6cf46868cb3151e58ccfb4d66ab318aa228d0f0646b3df98d8679b2689d76ee901f8541b8c4"
+  }
+]

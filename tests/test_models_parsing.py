@@ -2,7 +2,15 @@ from base64 import b64decode
 import unittest
 from pathlib import Path
 import json
-from quex_backend.models import *
+from quex_backend.models import (
+    EthereumHTTPActionWithProof,
+    PlutusHTTPActionWithProof,
+    QueryParameter,
+    QueryParameterPatch,
+    RequestHeader,
+    RequestHeaderPatch,
+    RideHTTPActionWithProof,
+)
 
 
 class TestModelsParsing(unittest.TestCase):
@@ -34,6 +42,13 @@ class TestModelsParsing(unittest.TestCase):
         vectors = json.load(f)
         for v in vectors:
             obj = PlutusHTTPActionWithProof.parse(b64decode(v["action_bytes"]))
+            self.assert_action_matches_vector(obj, v)
+
+    def test_ride_test_vectors_parsing(self):
+        f = open(Path(__file__).parent.resolve() / 'test_vectors' / 'ride_http_action_test_vectors.json')
+        vectors = json.load(f)
+        for v in vectors:
+            obj = RideHTTPActionWithProof.parse(b64decode(v["action_bytes"]))
             self.assert_action_matches_vector(obj, v)
 
 
