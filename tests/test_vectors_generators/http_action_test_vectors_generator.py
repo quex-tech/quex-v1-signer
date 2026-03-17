@@ -114,8 +114,8 @@ def prepare_action(raw_action, public_key) -> HTTPAction:
     return HTTPAction(
         convert_request(raw_action["request"]),
         prepare_patch(raw_action["patch"], public_key),
-        raw_action["filter"],
-        raw_action["schema"]
+        raw_action["schema"],
+        raw_action["filter"]
     )
 
 

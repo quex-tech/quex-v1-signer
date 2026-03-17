@@ -107,7 +107,7 @@ class TestModelsEncoding(unittest.TestCase):
     def test_apply_patch_from_test_vectors(self):
         v = next(
             (v for v in self.vectors if
-             v["action_id"] == "9fce90d652626de2251a6006fcdea993d36743c6186ccaca942be99d414efcac"),
+             v["action_id"] == "7c2faed38f9b8ee116a7fb2bc61769cb07a8df7fdc2566acfd85a289a7dea999"),
             None  # Returns None if no matching vector is found
         )
         patch_processor = EncryptedPatchProcessor.from_hex(v["private_key"])
