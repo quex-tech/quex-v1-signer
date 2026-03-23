@@ -61,7 +61,7 @@ class ABIEncodable(ABC):
         Default method to encode the object as bytes using the eth_abi library.
         It uses the obj_schema() method and encodes the result of astuple(self).
         """
-        return eth_abi.encode([self.obj_schema()], [astuple(self)])
+        return eth_abi.encode([self.obj_schema()], [astuple(self)])  # type: ignore[call-overload]  # always used with @dataclass
 
 
 class RequestMethod(IntEnum):
@@ -192,6 +192,9 @@ class HTTPAction:
     patch: HTTPPrivatePatch
     schema: str  # ResultSchema as a string for now
     filter: str  # JqFilter as a string for now
+
+    def action_id(self) -> bytes:
+        raise NotImplementedError
 
 
 # RequestActionWithProof structure

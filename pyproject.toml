@@ -1,0 +1,25 @@
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+exclude = [
+    "quex_backend/td_quote\\.py$",
+    "quex_backend/interpreter/parsetab\\.py$",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "cbor2.*",
+    "ecdsa.*",
+    "flask.*",
+    "flask_limiter.*",
+    "werkzeug.*",
+    "ntplib.*",
+    "ply.*",
+    "pyquex_tdx.*",
+    "eth_abi.*",
+    "eth_account.*",
+    "eth_keys.*",
+    "eth_utils.*",
+    "Crypto.*",
+]
+ignore_missing_imports = true

@@ -28,7 +28,7 @@ class PlutusDecodable(ABC):
     def from_plutus(cls, tag: CBORTag):
         _ensure_isinstance(tag, CBORTag)
         values = tag.value
-        cls_fields = fields(cls)
+        cls_fields = fields(cls)  # type: ignore[arg-type]  # always used with @dataclass
         if len(values) != len(cls_fields):
             raise ValueError(
                 f"Expected {len(cls_fields)} constructor fields")
