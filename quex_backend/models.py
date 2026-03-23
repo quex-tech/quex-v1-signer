@@ -174,18 +174,28 @@ class HTTPAction(ABIEncodable):
     filter: str  # JqFilter as a string for now
 
     @staticmethod
-    def parse(data: str):
-        data_bytes = b64decode(data)
-        data_tuple, = eth_abi.decode([HTTPAction.obj_schema()], data_bytes)
-        return from_nested_tuple(data_tuple, HTTPAction)
-
-    @staticmethod
     def obj_schema() -> str:
         return f"({HTTPRequest.obj_schema()},{HTTPPrivatePatch.obj_schema()},string,string)"
 
     def action_id(self) -> bytes:
         return keccak(self.bytes())
 
+
+# RequestActionWithProof structure
+@dataclass
+class HTTPActionWithProof(ABIEncodable):
+    action: HTTPAction
+    proof: bytes
+    
+    @staticmethod
+    def parse(data: str):
+        data_bytes = b64decode(data)
+        data_tuple, = eth_abi.decode([HTTPActionWithProof.obj_schema()], data_bytes)
+        return from_nested_tuple(data_tuple, HTTPActionWithProof)
+
+    @staticmethod
+    def obj_schema() -> str:
+        return f"({HTTPAction.obj_schema()},bytes)"
 
 #######################################
 # Data structures to provide response #
