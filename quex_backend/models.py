@@ -1,10 +1,10 @@
 import dataclasses
-from base64 import b64encode
-from dataclasses import dataclass, astuple, fields
-from enum import IntEnum
-from typing import List
-from urllib.parse import urljoin
 from abc import ABC, abstractmethod
+from base64 import b64encode
+from dataclasses import astuple, dataclass, fields
+from enum import IntEnum
+from typing import get_origin
+from urllib.parse import urljoin
 
 import eth_abi
 from eth_account import Account
@@ -12,30 +12,22 @@ from eth_account.messages import encode_defunct
 from eth_utils import keccak
 
 from quex_backend.plutus.cbor import PlutusByteString, PlutusRawData, PlutusTuple
-from quex_backend.plutus.mixins import PlutusEncodable, PlutusDecodable
+from quex_backend.plutus.mixins import PlutusDecodable, PlutusEncodable
 from quex_backend.ride.mixins import RideDecodable, RideEncodable, write_ride_bytes
 
 
 def b64dict(obj):
     return dataclasses.asdict(
         obj,
-        dict_factory=lambda fields: {
-            key: (b64encode(value).decode() if type(value) == bytes else value)
-            for (key, value) in fields
-        },
+        dict_factory=lambda fields: {key: (b64encode(value).decode() if type(value) is bytes else value) for (key, value) in fields},
     )
 
 
 def from_nested_tuple(t, class_constructor):
-    if "_name" in dir(class_constructor) and class_constructor._name == "List":
+    if get_origin(class_constructor) is list:
         return [from_nested_tuple(x, class_constructor.__args__[0]) for x in t]
-    elif type(t) == tuple:
-        return class_constructor(
-            *(
-                from_nested_tuple(x, y.type)
-                for x, y in zip(t, fields(class_constructor))
-            )
-        )
+    elif type(t) is tuple:
+        return class_constructor(*(from_nested_tuple(x, y.type) for x, y in zip(t, fields(class_constructor), strict=False)))
     else:
         return class_constructor(t)
 
@@ -54,14 +46,13 @@ class ABIEncodable(ABC):
         Abstract static method for returning the schema as a string.
         Must be implemented by subclasses.
         """
-        pass
 
     def bytes(self) -> bytes:
         """
         Default method to encode the object as bytes using the eth_abi library.
         It uses the obj_schema() method and encodes the result of astuple(self).
         """
-        return eth_abi.encode([self.obj_schema()], [astuple(self)])
+        return eth_abi.encode([self.obj_schema()], [astuple(self)])  # type: ignore[call-overload]
 
 
 class RequestMethod(IntEnum):
@@ -79,9 +70,7 @@ class RequestMethod(IntEnum):
 
 # RequestHeader structure
 @dataclass
-class RequestHeader(
-    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
-):
+class RequestHeader(ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable):
     key: str
     value: str
 
@@ -92,9 +81,7 @@ class RequestHeader(
 
 # QueryParameter structure
 @dataclass
-class QueryParameter(
-    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
-):
+class QueryParameter(ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable):
     key: str
     value: str
 
@@ -105,9 +92,7 @@ class QueryParameter(
 
 # QueryParameterPatch structure (encrypted value in base64)
 @dataclass
-class QueryParameterPatch(
-    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
-):
+class QueryParameterPatch(ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable):
     key: str
     ciphertext: bytes  # Encrypted value
 
@@ -118,9 +103,7 @@ class QueryParameterPatch(
 
 # RequestHeaderPatch structure (encrypted value in base64)
 @dataclass
-class RequestHeaderPatch(
-    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
-):
+class RequestHeaderPatch(ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable):
     key: str
     ciphertext: bytes  # Encrypted value
 
@@ -131,12 +114,10 @@ class RequestHeaderPatch(
 
 # HTTPPrivatePatch structure
 @dataclass
-class HTTPPrivatePatch(
-    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
-):
+class HTTPPrivatePatch(ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable):
     path_suffix: bytes
-    headers: List[RequestHeaderPatch]
-    parameters: List[QueryParameterPatch]
+    headers: list[RequestHeaderPatch]
+    parameters: list[QueryParameterPatch]
     body: bytes
     td_address: str
 
@@ -147,14 +128,12 @@ class HTTPPrivatePatch(
 
 # HTTPRequest structure
 @dataclass
-class HTTPRequest(
-    ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable
-):
+class HTTPRequest(ABIEncodable, PlutusEncodable, PlutusDecodable, RideEncodable, RideDecodable):
     method: RequestMethod
     host: str
     path: str
-    headers: List[RequestHeader]
-    parameters: List[QueryParameter]
+    headers: list[RequestHeader]
+    parameters: list[QueryParameter]
     body: bytes
 
     @staticmethod
@@ -255,7 +234,6 @@ class RideHTTPActionWithProof(RideDecodable):
 #######################################
 
 
-@dataclass
 class QuexErrorCodes(IntEnum):
     SUCCESS = 0
     PATCH_PROCESSING_ERROR = 1
@@ -270,6 +248,7 @@ class QuexErrorCodes(IntEnum):
     INTERNAL_REQUEST_PROCESSING_ERROR = 101
     INTERNAL_GET_TIMESTAMP_ERROR = 102
 
+
 @dataclass
 class ETHSignature:
     r: bytes
@@ -277,9 +256,7 @@ class ETHSignature:
     v: int
 
     def fromETH(sig):
-        return ETHSignature(
-            r=sig.r.to_bytes(32, "big"), s=sig.s.to_bytes(32, "big"), v=sig.v
-        )
+        return ETHSignature(r=sig.r.to_bytes(32, "big"), s=sig.s.to_bytes(32, "big"), v=sig.v)
 
 
 @dataclass

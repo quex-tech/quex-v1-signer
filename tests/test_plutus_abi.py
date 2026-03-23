@@ -1,5 +1,6 @@
 import json
 import unittest
+
 from quex_backend.plutus.abi import encoder
 
 
@@ -7,29 +8,20 @@ class TestEncoder(unittest.TestCase):
     def test_encode(self):
         cases = [
             ("1", "int", "01"),
-            ('"Hello, 世界"', "string", "4d" "48656c6c6f2c20e4b896e7958c"),
-            ("true", "bool", "d87a" "80"),
-            ("false", "bool", "d879" "80"),
+            ('"Hello, 世界"', "string", "4d48656c6c6f2c20e4b896e7958c"),
+            ("true", "bool", "d87a80"),
+            ("false", "bool", "d87980"),
             ("[]", "int[]", "80"),
-            ("[1]", "int[]", "9f" "01" "ff"),
-            ("[1]", "(int)", "d879" "9f" "01" "ff"),
-            ("[1,2]", "(int,int)", "d879" "9f" "0102" "ff"),
-            ("[1,[2]]", "(int,(int))", "d879" "9f" "01" "d879" "9f" "02ff" "ff"),
-            ("[1,[2]]", "(int,int[])", "d879" "9f" "01" "9f" "02" "ff" "ff"),
-            ('["BTC","USD"]', "(string,string)", "d879" "9f" "43425443" "43555344" "ff"),
-            ("[true,[1,2,3]]", "(bool,uint[])", "d879" "9f" "d87a80" "9f010203ff" "ff"),
-            ("[[1,[2]],[3,[4,5]]]", "(int,int[])[]",
-             "9f"
-             "d879" "9f" "01" "9f" "02" "ff" "ff"
-             "d879" "9f" "03" "9f" "0405" "ff" "ff"
-             "ff"),
-            ("[[1,[2]],[3,[4]]]", "(int,(int))[]",
-             "9f"
-             "d879" "9f" "01" "d879" "9f" "02" "ff" "ff"
-             "d879" "9f" "03" "d879" "9f" "04" "ff" "ff"
-             "ff"),
-            ("[1,2,3,4,5,6]", "(uint,uint8,uint256,int,int8,int256)",
-             "d879" "9f" "010203040506" "ff"),
+            ("[1]", "int[]", "9f01ff"),
+            ("[1]", "(int)", "d8799f01ff"),
+            ("[1,2]", "(int,int)", "d8799f0102ff"),
+            ("[1,[2]]", "(int,(int))", "d8799f01d8799f02ffff"),
+            ("[1,[2]]", "(int,int[])", "d8799f019f02ffff"),
+            ('["BTC","USD"]', "(string,string)", "d8799f4342544343555344ff"),
+            ("[true,[1,2,3]]", "(bool,uint[])", "d8799fd87a809f010203ffff"),
+            ("[[1,[2]],[3,[4,5]]]", "(int,int[])[]", "9fd8799f019f02ffffd8799f039f0405ffffff"),
+            ("[[1,[2]],[3,[4]]]", "(int,(int))[]", "9fd8799f01d8799f02ffffd8799f03d8799f04ffffff"),
+            ("[1,2,3,4,5,6]", "(uint,uint8,uint256,int,int8,int256)", "d8799f010203040506ff"),
         ]
 
         for json_str, schema, expected_hex in cases:

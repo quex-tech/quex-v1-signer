@@ -5,10 +5,12 @@ from Crypto.Hash import SHA256
 from Crypto.Protocol.KDF import HKDF
 from ecdsa import SECP256k1, SigningKey, VerifyingKey
 
-from quex_backend.models import HTTPRequest, RequestHeader, QueryParameter, HTTPAction
+from quex_backend.models import HTTPAction, HTTPRequest, QueryParameter, RequestHeader
+
 
 class EncryptedPatchProcessingError(Exception):
     pass
+
 
 class EncryptedPatchProcessor:
     def __init__(self, private_key: SigningKey):
@@ -30,20 +32,20 @@ class EncryptedPatchProcessor:
 
         # Perform ECDH to obtain the shared secret point
         shared_point = ephemeral_public_key.pubkey.point * self.__private_key.privkey.secret_multiplier
-        shared_key = b'\x04' + shared_point.to_bytes()
-        symm_key = HKDF(b'\x04' + ephemeral_public_key.to_string() + shared_key, 32, salt=None, hashmod=SHA256)
+        shared_key = b"\x04" + shared_point.to_bytes()
+        symm_key = HKDF(b"\x04" + ephemeral_public_key.to_string() + shared_key, 32, salt=None, hashmod=SHA256)  # type: ignore[arg-type]
 
         # Decrypt the message using AES-GCM
-        cipher = AES.new(symm_key, AES.MODE_GCM, nonce=nonce)
+        cipher = AES.new(symm_key, AES.MODE_GCM, nonce=nonce)  # type: ignore[arg-type]
         decrypted_message = cipher.decrypt_and_verify(ciphertext, tag)
 
         return decrypted_message
 
-    def apply_patch(self, quex_request: HTTPAction, proof: bytes) -> 'HTTPRequest':
+    def apply_patch(self, quex_request: HTTPAction, proof: bytes) -> "HTTPRequest":
         """
         Apply the HTTPPrivatePatch to the HTTPRequest within the QuexRequest,
         decrypting any encrypted fields and updating the HTTPRequest.
-        
+
         Returns:
             HTTPRequest: The patched HTTPRequest
         """
@@ -54,32 +56,32 @@ class EncryptedPatchProcessor:
 
             for header_patch in http_patch.headers:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)  # type: ignore[attr-defined]
                 decrypted_value = self.decrypt_message(header_patch.ciphertext, ephemeral_public_key)
-                http_request.headers.append(RequestHeader(header_patch.key, decrypted_value.decode('utf-8')))
+                http_request.headers.append(RequestHeader(header_patch.key, decrypted_value.decode("utf-8")))
 
             for param_patch in http_patch.parameters:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)  # type: ignore[attr-defined]
                 decrypted_value = self.decrypt_message(param_patch.ciphertext, ephemeral_public_key)
-                http_request.parameters.append(QueryParameter(param_patch.key, decrypted_value.decode('utf-8')))
+                http_request.parameters.append(QueryParameter(param_patch.key, decrypted_value.decode("utf-8")))
 
             if http_patch.body:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)  # type: ignore[attr-defined]
                 decrypted_body = self.decrypt_message(http_patch.body, ephemeral_public_key)
                 http_request.body = decrypted_body
 
             if http_patch.path_suffix:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)  # type: ignore[attr-defined]
                 decrypted_path_suffix = self.decrypt_message(http_patch.path_suffix, ephemeral_public_key)
-                http_request.path += decrypted_path_suffix.decode('utf-8')
+                http_request.path += decrypted_path_suffix.decode("utf-8")
 
             return http_request
-        except Exception:
-            raise EncryptedPatchProcessingError
-    
+        except Exception as e:
+            raise EncryptedPatchProcessingError from e
+
     def recover_ephemeral_public_key(self, action_id: bytes, proof: bytes) -> VerifyingKey:
         """
         Recover 64-byte (x||y) public key from a signature produced by the

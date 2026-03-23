@@ -2,10 +2,10 @@ import struct
 from abc import ABC
 from dataclasses import fields
 from enum import IntEnum
-from typing import get_origin, get_args
+from typing import get_args, get_origin
 
 
-class RideEncodable(ABC):
+class RideEncodable(ABC):  # noqa: B024
     def to_ride_bytes(self) -> bytes:
         buf = bytearray()
         self.write_ride_bytes(buf)
@@ -16,7 +16,7 @@ class RideEncodable(ABC):
             write_ride_bytes(getattr(self, f.name), buf)
 
 
-class RideDecodable(ABC):
+class RideDecodable(ABC):  # noqa: B024
     @classmethod
     def from_ride_bytes(cls, buf):
         v, _ = cls.read_ride_bytes(buf, 0)
@@ -85,8 +85,8 @@ def read_ride_bytes(buf, off, target_type):
         inner_type = get_args(target_type)[0]
         count = struct.unpack_from(">q", buf, off)[0]
         newoff = off + 8
-        res = list()
-        for i in range(count):
+        res = []
+        for _ in range(count):
             v, newoff = read_ride_bytes(buf, newoff, inner_type)
             res.append(v)
         return res, newoff

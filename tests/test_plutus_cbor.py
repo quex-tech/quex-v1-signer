@@ -1,4 +1,5 @@
 import unittest
+
 from cbor2 import CBORTag
 
 from quex_backend.plutus.cbor import (
@@ -29,9 +30,8 @@ class TestGetTag(unittest.TestCase):
 
     def test_get_tag_out_of_range(self):
         for constr_idx in [-1, 128]:
-            with self.subTest(constr_idx=constr_idx):
-                with self.assertRaises(ValueError):
-                    get_tag(constr_idx)
+            with self.subTest(constr_idx=constr_idx), self.assertRaises(ValueError):
+                get_tag(constr_idx)
 
 
 class TestGetConstrIdx(unittest.TestCase):
@@ -59,24 +59,27 @@ class TestDumps(unittest.TestCase):
         cases = [
             (PlutusRawData(bytes.fromhex("123456789a")), "123456789a"),
             (PlutusByteString(b""), "40"),
-            (PlutusByteString(bytes(64)), (
-                "5840"
-                "00000000000000000000000000000000"
-                "00000000000000000000000000000000"
-                "00000000000000000000000000000000"
-                "00000000000000000000000000000000"
-            )),
-            (PlutusByteString(bytes(65)), (
-                "5f" "5840"
-                "00000000000000000000000000000000"
-                "00000000000000000000000000000000"
-                "00000000000000000000000000000000"
-                "00000000000000000000000000000000"
-                "4100" "ff")),
+            (
+                PlutusByteString(bytes(64)),
+                ("584000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+            ),
+            (
+                PlutusByteString(bytes(65)),
+                (
+                    "5f"
+                    "5840"
+                    "00000000000000000000000000000000"
+                    "00000000000000000000000000000000"
+                    "00000000000000000000000000000000"
+                    "00000000000000000000000000000000"
+                    "4100"
+                    "ff"
+                ),
+            ),
             (PlutusList([]), "80"),
-            (PlutusList([1, 2, 3]), "9f" "010203" "ff"),
-            (PlutusTuple([]), "d879" "80"),
-            (PlutusTuple([1, 2, 3]), "d879" "9f" "010203" "ff"),
+            (PlutusList([1, 2, 3]), "9f010203ff"),
+            (PlutusTuple([]), "d87980"),
+            (PlutusTuple([1, 2, 3]), "d8799f010203ff"),
         ]
 
         for value, expected in cases:

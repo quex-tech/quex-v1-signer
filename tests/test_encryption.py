@@ -1,19 +1,19 @@
 import base64
-import unittest
 import json
+import unittest
 from pathlib import Path
 
-from quex_backend.encryption import EncryptedPatchProcessor
-from quex_backend.models import *
-from tests.client import Client
 from ecdsa import SECP256k1, SigningKey
+from tests.client import Client
+
+from quex_backend.encryption import EncryptedPatchProcessor
+from quex_backend.models import EthereumHTTPActionWithProof, QueryParameter, RequestHeader
 
 
 class TestModelsEncoding(unittest.TestCase):
-    f = open(Path(__file__).parent.resolve() / 'test_vectors' / 'http_action_test_vectors.json')
-    vectors = json.load(f)
+    vectors = json.loads((Path(__file__).parent.resolve() / "test_vectors" / "http_action_test_vectors.json").read_text())
 
-    messages = [b'', b"Hello, secure world!", b"Some encrypted message, to be applied as a patch"]
+    messages = [b"", b"Hello, secure world!", b"Some encrypted message, to be applied as a patch"]
 
     def test_encryption_decryption(self):
         for message in self.messages:

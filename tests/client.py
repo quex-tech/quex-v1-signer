@@ -19,7 +19,7 @@ class Client:
         shared_key = shared_point.to_bytes()
 
         # Derive the symmetric key using HKDF with SHA-256
-        hkdf_input = b'\x04' + self.ephemeral_public_key.to_string() + b'\x04' + shared_key
+        hkdf_input = b"\x04" + self.ephemeral_public_key.to_string() + b"\x04" + shared_key
         symm_key = HKDF(hkdf_input, 32, salt=None, hashmod=SHA256)
 
         # Encrypt the message using AES-GCM
@@ -34,12 +34,12 @@ class Client:
 
     def get_address(self) -> str:
         # Get the public key as bytes and strip the '04' (uncompress format ID) prefix
-        public_key_bytes = self.server_public_key.to_string('uncompressed')[1:]
+        public_key_bytes = self.server_public_key.to_string("uncompressed")[1:]
 
         # Apply Keccak-256 hash to the public key and take the last 20 bytes of the result to get the Ethereum address
         eth_address_bytes = keccak(public_key_bytes)[-20:]
 
         # Convert to hex and add 0x prefix
-        eth_address = '0x' + eth_address_bytes.hex()
+        eth_address = "0x" + eth_address_bytes.hex()
 
         return eth_address

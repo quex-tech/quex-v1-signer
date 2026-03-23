@@ -1,32 +1,32 @@
+import json
 import unittest
-from unittest.mock import patch, Mock
+from dataclasses import dataclass
+from unittest.mock import Mock, patch
 
 import pytest
-import json
-from typing import Type, Optional
+from requests.exceptions import Timeout
 
-from quex_backend.models import *
-from quex_backend.utils import *
+from quex_backend.models import HTTPRequest, QueryParameter, RequestHeader, RequestMethod
+from quex_backend.utils import (
+    RequestConnectionError,
+    Response4XXError,
+    Response5XXError,
+    ResponseNotSupportedResponseCodeError,
+    make_request,
+)
 
 
 @dataclass
 class TestVector:
     __test__ = False
     host: str
-    expected_exception_type: Optional[Type[Exception]] = None
+    expected_exception_type: type[Exception] | None = None
     expected_error: str = ""
     path: str = ""
     as_json: bool = False
 
     def get_request(self) -> HTTPRequest:
-        return HTTPRequest(
-            method=RequestMethod.GET,
-            host=self.host,
-            path=self.path,
-            headers=[],
-            parameters=[],
-            body=[]
-        )
+        return HTTPRequest(method=RequestMethod.GET, host=self.host, path=self.path, headers=[], parameters=[], body=[])
 
 
 class TestRequests(unittest.TestCase):
@@ -43,7 +43,6 @@ class TestRequests(unittest.TestCase):
         TestVector("long-extended-subdomain-name-containing-many-letters-and-dashes.badssl.com/"),
         TestVector("longextendedsubdomainnamewithoutdashesinordertotestwordwrapping.badssl.com/"),
         TestVector("mozilla-modern.badssl.com/"),
-
         # These certificates are expired
         # TestVector("sha512.badssl.com/"),
         # TestVector("1000-sans.badssl.com/"),
@@ -57,17 +56,14 @@ class TestRequests(unittest.TestCase):
         # TODO: TestVector("revoked.badssl.com", "???"),
         # # Certificate Transparency
         # TODO TestVector("no-sct.badssl.com", "???"),
-
         # Cipher Suite
         # TODO: might be fixed be allowing TLS 1.3 only
         # TestVector("mozilla-old.badssl.com", "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         # TestVector("mozilla-intermediate.badssl.com/", "SSLV3_ALERT_HANDSHAKE_FAILURE"),
-
     ]
 
     # Certificates that should not be accepted
     incorrect_certificates = [
-
         # TLS errors
         # Certificate section
         TestVector("expired.badssl.com/", RequestConnectionError, "certificate has expired"),
@@ -77,7 +73,6 @@ class TestRequests(unittest.TestCase):
         TestVector("no-subject.badssl.com/", RequestConnectionError, "certificate has expired"),
         TestVector("no-common-name.badssl.com", RequestConnectionError, "certificate has expired"),
         TestVector("incomplete-chain.badssl.com", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
-
         # Key Exchange
         TestVector("dh480.badssl.com", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         TestVector("dh512.badssl.com", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
@@ -86,14 +81,11 @@ class TestRequests(unittest.TestCase):
         TestVector("dh2048.badssl.com", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         TestVector("dh-small-subgroup.badssl.com", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         TestVector("dh-composite.badssl.com", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
-
         # Protocol
         TestVector("tls-v1-0.badssl.com:1010/", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         TestVector("tls-v1-1.badssl.com:1011/", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
-
         # Upgrade
         TestVector("subdomain.preloaded-hsts.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
-
         # HTTP
         TestVector("http.badssl.com/", ResponseNotSupportedResponseCodeError),
         TestVector("http-textarea.badssl.com/", ResponseNotSupportedResponseCodeError),
@@ -101,32 +93,26 @@ class TestRequests(unittest.TestCase):
         TestVector("http-login.badssl.com/", ResponseNotSupportedResponseCodeError),
         TestVector("http-dynamic-login.badssl.com/", ResponseNotSupportedResponseCodeError),
         TestVector("http-credit-card.badssl.com/", ResponseNotSupportedResponseCodeError),
-
         # Known Bad
         TestVector("superfish.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("edellroot.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("dsdtestprovider.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("preact-cli.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("webpack-dev-server.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
-
         # Chrome Tests
         TestVector("captive-portal.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("mitm-software.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
-
         # Defunct
         TestVector("sha1-2016.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("sha1-2017.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("sha1-intermediate.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
         TestVector("invalid-expected-sct.badssl.com/", RequestConnectionError, "CERTIFICATE_VERIFY_FAILED"),
-
         # Cipher Suite
         TestVector("rc4-md5.badssl.com/", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         TestVector("3des.badssl.com/", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         TestVector("null.badssl.com/", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
         TestVector("cbc.badssl.com/", RequestConnectionError, "SSLV3_ALERT_HANDSHAKE_FAILURE"),
-
         TestVector("client-cert-missing.badssl.com/", Response4XXError),
-
     ]
 
     mock_test_vectors = [
@@ -144,11 +130,7 @@ class TestRequests(unittest.TestCase):
                 print(f"Testing {effect}, {expected_result}, {expected_error}")
 
                 # Setup
-                body_content = {
-                    "param1": "value1",
-                    "param2": 42,
-                    "param3": {"nested_key": "nested_value"}
-                }
+                body_content = {"param1": "value1", "param2": 42, "param3": {"nested_key": "nested_value"}}
                 body_bytes = json.dumps(body_content).encode()
 
                 http_request = HTTPRequest(
@@ -157,7 +139,7 @@ class TestRequests(unittest.TestCase):
                     path="/v1/resource",
                     headers=[RequestHeader("Content-Type", "application/json")],
                     parameters=[QueryParameter("id", "1")],
-                    body=body_bytes
+                    body=body_bytes,
                 )
 
                 # Mock response
@@ -182,7 +164,7 @@ class TestRequests(unittest.TestCase):
                     headers={"Content-Type": "application/json"},
                     data=body_bytes,
                     verify=True,
-                    allow_redirects=False
+                    allow_redirects=False,
                 )
 
     def test_correct_certificates(self):
@@ -215,5 +197,5 @@ class TestRequests(unittest.TestCase):
                 self.assertTrue(False, f"Expected error for {v}, got response {resp} with no errors")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main()

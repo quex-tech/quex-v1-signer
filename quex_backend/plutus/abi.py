@@ -2,11 +2,11 @@ from abc import abstractmethod
 from typing import Any
 
 from cbor2 import CBORTag
-from eth_abi.base import parse_type_str, parse_tuple_type_str
+from eth_abi.base import parse_tuple_type_str, parse_type_str
+from eth_abi.codec import ABIEncoder
 from eth_abi.encoding import BaseEncoder
 from eth_abi.exceptions import ValueOutOfBounds
-from eth_abi.codec import ABIEncoder
-from eth_abi.registry import ABIRegistry, is_base_tuple, has_arrlist, BaseEquals
+from eth_abi.registry import ABIRegistry, BaseEquals, has_arrlist, is_base_tuple
 
 from .cbor import PlutusByteString, PlutusList, PlutusTuple, dumps
 
@@ -40,8 +40,7 @@ class UnsignedIntegerEncoder(PlutusBaseEncoder):
         if not isinstance(value, int):
             type(self).invalidate_value(value, msg="must be an integer")
         if value < 0:
-            type(self).invalidate_value(
-                value, msg="must be non-negative")
+            type(self).invalidate_value(value, msg="must be non-negative")
 
     def to_primitive(self, value):
         return value
@@ -87,31 +86,26 @@ class TupleEncoder(PlutusBaseEncoder):
 
     def validate_value(self, value) -> None:
         if not isinstance(value, (tuple, list)):
-            type(self).invalidate_value(
-                value, msg="must be a tuple or list")
+            type(self).invalidate_value(value, msg="must be a tuple or list")
 
         if len(value) != len(self.encoders):
             self.invalidate_value(
                 value,
                 exc=ValueOutOfBounds,
-                msg=f"value has {len(value)} items when {len(self.encoders)} were "
-                "expected",
+                msg=f"value has {len(value)} items when {len(self.encoders)} were expected",
             )
 
-        for item, encoder in zip(value, self.encoders):
+        for item, encoder in zip(value, self.encoders, strict=True):
             encoder.validate_value(item)
 
     def to_primitive(self, value):
-        primitives = [
-            encoder.to_primitive(field) for field, encoder in zip(value, self.encoders)
-        ]
+        primitives = [encoder.to_primitive(field) for field, encoder in zip(value, self.encoders, strict=True)]
         return PlutusTuple(primitives)
 
     @classmethod
     @parse_tuple_type_str
     def from_type_str(cls, type_str, registry):
-        encoders = tuple(registry.get_encoder(comp.to_type_str())
-                         for comp in type_str.components)
+        encoders = tuple(registry.get_encoder(comp.to_type_str()) for comp in type_str.components)
         return cls(encoders=encoders)
 
 
@@ -129,8 +123,7 @@ class ArrayEncoder(PlutusBaseEncoder):
             self.invalidate_value(
                 value,
                 exc=ValueOutOfBounds,
-                msg=f"value has {len(value)} items when {self.array_size} were "
-                "expected",
+                msg=f"value has {len(value)} items when {self.array_size} were expected",
             )
 
         for item in value:
@@ -145,10 +138,7 @@ class ArrayEncoder(PlutusBaseEncoder):
         item_encoder = registry.get_encoder(type_str.item_type.to_type_str())
         array_spec = type_str.arrlist[-1]
 
-        return cls(
-            item_encoder=item_encoder,
-            array_size=array_spec[0] if len(array_spec) == 1 else None
-        )
+        return cls(item_encoder=item_encoder, array_size=array_spec[0] if len(array_spec) == 1 else None)
 
 
 registry = ABIRegistry()

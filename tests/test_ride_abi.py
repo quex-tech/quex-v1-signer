@@ -1,5 +1,6 @@
 import json
 import unittest
+
 from quex_backend.ride.abi import encoder
 
 
@@ -23,16 +24,12 @@ class TestEncoder(unittest.TestCase):
             (
                 "[[1,[2]],[3,[4,5]]]",
                 "(int,int[])[]",
-                "0000000000000002"
-                "000000000000000100000000000000010000000000000002"
-                "0000000000000003000000000000000200000000000000040000000000000005",
+                "00000000000000020000000000000001000000000000000100000000000000020000000000000003000000000000000200000000000000040000000000000005",
             ),
             (
                 "[[1,[2]],[3,[4]]]",
                 "(int,(int))[]",
-                "0000000000000002"
-                "00000000000000010000000000000002"
-                "00000000000000030000000000000004",
+                "00000000000000020000000000000001000000000000000200000000000000030000000000000004",
             ),
             (
                 "[1,2,3,4,5,6]",
@@ -43,9 +40,7 @@ class TestEncoder(unittest.TestCase):
         ]
 
         for json_str, schema, expected_hex in cases:
-            with self.subTest(
-                json=json_str, schema=schema, expected_primitive=expected_hex
-            ):
+            with self.subTest(json=json_str, schema=schema, expected_primitive=expected_hex):
                 actual = encoder.encode([schema], [json.loads(json_str)])
                 self.assertEqual(actual.hex(), expected_hex)
 

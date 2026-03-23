@@ -36,7 +36,6 @@ from quex_backend.utils import (
     process_json,
 )
 
-
 bp = Blueprint("v1", __name__)
 
 PLUTUS_MAGIC = b"\xd8\x79\x9f"

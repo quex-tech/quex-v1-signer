@@ -1,0 +1,54 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 160
+src = ["quex_backend", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "PTH",    # pathlib
+    "PIE",    # flake8-pie
+    "RUF",    # ruff-specific rules
+    "T201",   # print() forbidden
+    "PLC0415", # import-outside-toplevel
+]
+
+exclude = ["quex_backend/interpreter/parsetab.py"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T201", "RUF012", "SIM115", "B017"]
+"tests/test_vectors_generators/**" = ["PTH123", "SIM401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["quex_backend"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+exclude = [
+    "quex_backend/td_quote\\.py$",
+    "quex_backend/interpreter/parsetab\\.py$",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "cbor2.*",
+    "ecdsa.*",
+    "flask.*",
+    "flask_limiter.*",
+    "werkzeug.*",
+    "ntplib.*",
+    "ply.*",
+    "pyquex_tdx.*",
+    "eth_abi.*",
+    "eth_account.*",
+    "eth_keys.*",
+    "eth_utils.*",
+    "Crypto.*",
+]
+ignore_missing_imports = true

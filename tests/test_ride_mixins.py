@@ -1,15 +1,13 @@
 import struct
 import unittest
-from enum import IntEnum
 from dataclasses import dataclass
-from typing import List
-
+from enum import IntEnum
 
 from quex_backend.ride.mixins import (
+    RideDecodable,
+    RideEncodable,
     read_ride_bytes,
     write_ride_bytes,
-    RideEncodable,
-    RideDecodable,
 )
 
 
@@ -56,7 +54,7 @@ class TestReadRideBytes(unittest.TestCase):
             (b"\x00\x00\x00\x00\x00\x00\x00\x05Hello", str, "Hello"),
             (
                 b"\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02",
-                List[int],
+                list[int],
                 [1, 2],
             ),
             (b"\x00\x00\x00\x00\x00\x00\x00\x01", MyEnum, MyEnum.B),
@@ -68,9 +66,7 @@ class TestReadRideBytes(unittest.TestCase):
         ]
 
         for value, target_type, expected in cases:
-            with self.subTest(
-                input_value=value, target_type=target_type, expected=expected
-            ):
+            with self.subTest(input_value=value, target_type=target_type, expected=expected):
                 actual, _ = read_ride_bytes(value, 0, target_type)
                 self.assertEqual(actual, expected)
 
@@ -91,9 +87,8 @@ class TestReadRideBytes(unittest.TestCase):
         ]
 
         for value, target_type in cases:
-            with self.subTest(input_value=value, target_type=target_type):
-                with self.assertRaises((ValueError, struct.error)):
-                    read_ride_bytes(value, 0, target_type)
+            with self.subTest(input_value=value, target_type=target_type), self.assertRaises((ValueError, struct.error)):
+                read_ride_bytes(value, 0, target_type)
 
 
 if __name__ == "__main__":

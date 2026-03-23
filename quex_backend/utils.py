@@ -61,8 +61,8 @@ def get_timestamp() -> int:
     try:
         response = c.request("europe.pool.ntp.org", version=4)
         return round(response.tx_time)
-    except Exception:
-        raise GetTimestampError
+    except Exception as e:
+        raise GetTimestampError from e
 
 
 def process_json(input_json: dict, json_query: str, schema: str, encode) -> bytes:
@@ -72,13 +72,13 @@ def process_json(input_json: dict, json_query: str, schema: str, encode) -> byte
     try:
         ast = parser.parse(json_query)
         result = jq_eval(input_json, ast)
-    except Exception:
-        raise JQProcessingError
+    except Exception as e:
+        raise JQProcessingError from e
 
     try:
         return encode([schema], [result])
-    except Exception:
-        raise ABIEncodingError
+    except Exception as e:
+        raise ABIEncodingError from e
 
 
 class SSLAdapter(HTTPAdapter):
@@ -114,11 +114,11 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     except (ConnectionError, Timeout) as exc:
         raise RequestConnectionError from exc
 
-    if r.status_code >= 300 and r.status_code < 400:
+    if 300 <= r.status_code < 400:
         raise ResponseNotSupportedResponseCodeError(r.status_code)
-    elif r.status_code >= 400 and r.status_code < 500:
+    elif 400 <= r.status_code < 500:
         raise Response4XXError(r.status_code)
-    elif r.status_code >= 500 and r.status_code < 600:
+    elif 500 <= r.status_code < 600:
         raise Response5XXError(r.status_code)
     elif r.status_code >= 600:
         raise ResponseNotSupportedResponseCodeError(r.status_code)
@@ -129,7 +129,7 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     if as_json:
         try:
             return r.json()
-        except Exception:
-            raise ResponseNotJSONError
+        except Exception as e:
+            raise ResponseNotJSONError from e
     else:
         return r.text

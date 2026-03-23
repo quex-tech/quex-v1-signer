@@ -1,10 +1,10 @@
 import struct
 
-from eth_abi.base import parse_type_str, parse_tuple_type_str
+from eth_abi.base import parse_tuple_type_str, parse_type_str
+from eth_abi.codec import ABIEncoder
 from eth_abi.encoding import BaseEncoder
 from eth_abi.exceptions import ValueOutOfBounds
-from eth_abi.codec import ABIEncoder
-from eth_abi.registry import ABIRegistry, is_base_tuple, has_arrlist, BaseEquals
+from eth_abi.registry import ABIRegistry, BaseEquals, has_arrlist, is_base_tuple
 
 
 class IntegerEncoder(BaseEncoder):
@@ -83,25 +83,22 @@ class TupleEncoder(BaseEncoder):
             self.invalidate_value(
                 value,
                 exc=ValueOutOfBounds,
-                msg=f"value has {len(value)} items when {len(self.encoders)} were "
-                "expected",
+                msg=f"value has {len(value)} items when {len(self.encoders)} were expected",
             )
 
-        for item, encoder in zip(value, self.encoders):
+        for item, encoder in zip(value, self.encoders, strict=True):
             encoder.validate_value(item)
 
     def encode(self, value):
         res = bytearray()
-        for field, encoder in zip(value, self.encoders):
+        for field, encoder in zip(value, self.encoders, strict=True):
             res.extend(encoder.encode(field))
         return bytes(res)
 
     @classmethod
     @parse_tuple_type_str
     def from_type_str(cls, type_str, registry):
-        encoders = tuple(
-            registry.get_encoder(comp.to_type_str()) for comp in type_str.components
-        )
+        encoders = tuple(registry.get_encoder(comp.to_type_str()) for comp in type_str.components)
         return cls(encoders=encoders)
 
 
@@ -119,8 +116,7 @@ class ArrayEncoder(BaseEncoder):
             self.invalidate_value(
                 value,
                 exc=ValueOutOfBounds,
-                msg=f"value has {len(value)} items when {self.array_size} were "
-                "expected",
+                msg=f"value has {len(value)} items when {self.array_size} were expected",
             )
 
         for item in value:

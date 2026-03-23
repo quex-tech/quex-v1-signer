@@ -1,12 +1,11 @@
-from enum import IntEnum
-from dataclasses import dataclass
-from typing import List
 import unittest
+from dataclasses import dataclass
+from enum import IntEnum
 
 from cbor2 import CBORTag
 
 from quex_backend.plutus.cbor import PlutusByteString, PlutusList, PlutusTuple
-from quex_backend.plutus.mixins import to_plutus, from_plutus, PlutusEncodable, PlutusDecodable
+from quex_backend.plutus.mixins import PlutusDecodable, PlutusEncodable, from_plutus, to_plutus
 
 
 class MyEnum(IntEnum):
@@ -22,7 +21,7 @@ class MyClass(PlutusEncodable, PlutusDecodable):
 
 @dataclass
 class NestedClass(PlutusEncodable, PlutusDecodable):
-    values: List[int]
+    values: list[int]
     child: MyClass
 
 
@@ -39,10 +38,12 @@ class TestToPlutus(unittest.TestCase):
             (MyClass(1, "Hello"), PlutusTuple([1, PlutusByteString(b"Hello")])),
             (
                 NestedClass([1, 2], MyClass(3, "Hi")),
-                PlutusTuple([
-                    PlutusList([1, 2]),
-                    PlutusTuple([3, PlutusByteString(b"Hi")]),
-                ]),
+                PlutusTuple(
+                    [
+                        PlutusList([1, 2]),
+                        PlutusTuple([3, PlutusByteString(b"Hi")]),
+                    ]
+                ),
             ),
         ]
 
@@ -57,7 +58,7 @@ class TestFromPlutus(unittest.TestCase):
         cases = [
             (b"Hello", bytes, b"Hello"),
             (b"Hello", str, "Hello"),
-            ([1, 2], List[int], [1, 2]),
+            ([1, 2], list[int], [1, 2]),
             (CBORTag(122, []), MyEnum, MyEnum.B),
             (CBORTag(121, [1, b"Hello"]), MyClass, MyClass(1, "Hello")),
             (
@@ -79,9 +80,8 @@ class TestFromPlutus(unittest.TestCase):
         ]
 
         for value, target_type in cases:
-            with self.subTest(input_value=value, target_type=target_type):
-                with self.assertRaises(TypeError):
-                    from_plutus(value, target_type)
+            with self.subTest(input_value=value, target_type=target_type), self.assertRaises(TypeError):
+                from_plutus(value, target_type)
 
 
 if __name__ == "__main__":

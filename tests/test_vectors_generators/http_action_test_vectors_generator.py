@@ -2,16 +2,30 @@ import base64
 import enum
 import json
 from pathlib import Path
+from typing import Any
 
-from ecdsa import SigningKey, SECP256k1
-
-from quex_backend.models import HTTPPrivatePatch, RequestHeaderPatch, QueryParameterPatch, EthereumHTTPAction, HTTPRequest, \
-    RequestMethod, RequestHeader, QueryParameter, EthereumHTTPActionWithProof, PlutusHTTPAction, PlutusHTTPActionWithProof, RideHTTPAction, RideHTTPActionWithProof
-from quex_backend.plutus.cbor import PlutusTuple, dumps as plutus_dumps
-from quex_backend.ride.mixins import write_ride_bytes
+from ecdsa import SECP256k1, SigningKey
 from tests.client import Client
 
-from typing import Any
+from quex_backend.models import (
+    EthereumHTTPAction,
+    EthereumHTTPActionWithProof,
+    HTTPPrivatePatch,
+    HTTPRequest,
+    PlutusHTTPAction,
+    PlutusHTTPActionWithProof,
+    QueryParameter,
+    QueryParameterPatch,
+    RequestHeader,
+    RequestHeaderPatch,
+    RequestMethod,
+    RideHTTPAction,
+    RideHTTPActionWithProof,
+)
+from quex_backend.plutus.cbor import PlutusTuple
+from quex_backend.plutus.cbor import dumps as plutus_dumps
+from quex_backend.ride.mixins import write_ride_bytes
+
 
 class CustomEncoder(json.JSONEncoder):
     """
@@ -25,7 +39,7 @@ class CustomEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         # Handle bytes by converting to base64
         if isinstance(obj, bytes):
-            return base64.b64encode(obj).decode('ascii')
+            return base64.b64encode(obj).decode("ascii")
 
         if isinstance(obj, enum.Enum):
             return obj.value
@@ -57,10 +71,7 @@ class CustomEncoder(json.JSONEncoder):
         elif isinstance(obj, (list, tuple)):
             return [self._process_nested(item) for item in obj]
         elif isinstance(obj, bytes):
-            return {
-                "_type": "bytes",
-                "data": base64.b64encode(obj).decode('ascii')
-            }
+            return {"_type": "bytes", "data": base64.b64encode(obj).decode("ascii")}
         elif hasattr(obj, "__dict__"):
             return self.default(obj)
         else:
@@ -97,7 +108,7 @@ def convert_request(request) -> HTTPRequest:
         request["path"],
         [RequestHeader(header["key"], header["value"]) for header in headers],
         [QueryParameter(param["key"], param["value"]) for param in parameters],
-        base64.b64decode(request["body"])
+        base64.b64decode(request["body"]),
     )
 
 
@@ -115,18 +126,13 @@ def prepare_patch(raw_patch, client: Client) -> HTTPPrivatePatch:
         [RequestHeaderPatch(header["key"], client.encrypt_message(str.encode(header["value"]))) for header in headers],
         [QueryParameterPatch(param["key"], client.encrypt_message(str.encode(param["value"]))) for param in parameters],
         client.encrypt_message(base64.b64decode(body)) if body else b"",
-        client.get_address()
+        client.get_address(),
     )
 
 
 def prepare_action(raw_action, public_key) -> EthereumHTTPActionWithProof:
     client = Client(public_key)
-    action = EthereumHTTPAction(
-        convert_request(raw_action["request"]),
-        prepare_patch(raw_action["patch"], client),
-        raw_action["schema"],
-        raw_action["filter"]
-    )
+    action = EthereumHTTPAction(convert_request(raw_action["request"]), prepare_patch(raw_action["patch"], client), raw_action["schema"], raw_action["filter"])
     action_id = action.action_id()
     proof = client.encrypt_message(action_id, include_ephemeral_public_key=True)
     return EthereumHTTPActionWithProof(action, proof)
@@ -134,12 +140,7 @@ def prepare_action(raw_action, public_key) -> EthereumHTTPActionWithProof:
 
 def prepare_plutus_action(raw_action, public_key) -> PlutusHTTPActionWithProof:
     client = Client(public_key)
-    action = PlutusHTTPAction(
-        convert_request(raw_action["request"]),
-        prepare_patch(raw_action["patch"], client),
-        raw_action["schema"],
-        raw_action["filter"]
-    )
+    action = PlutusHTTPAction(convert_request(raw_action["request"]), prepare_patch(raw_action["patch"], client), raw_action["schema"], raw_action["filter"])
     action_id = action.action_id()
     proof = client.encrypt_message(action_id, include_ephemeral_public_key=True)
     return PlutusHTTPActionWithProof(action, proof)
@@ -147,12 +148,7 @@ def prepare_plutus_action(raw_action, public_key) -> PlutusHTTPActionWithProof:
 
 def prepare_ride_action(raw_action, public_key) -> RideHTTPActionWithProof:
     client = Client(public_key)
-    action = RideHTTPAction(
-        convert_request(raw_action["request"]),
-        prepare_patch(raw_action["patch"], client),
-        raw_action["schema"],
-        raw_action["filter"]
-    )
+    action = RideHTTPAction(convert_request(raw_action["request"]), prepare_patch(raw_action["patch"], client), raw_action["schema"], raw_action["filter"])
     action_id = action.action_id()
     proof = client.encrypt_message(action_id, include_ephemeral_public_key=True)
     return RideHTTPActionWithProof(action, proof)

@@ -1,40 +1,35 @@
 from abc import ABC
 from dataclasses import fields
 from enum import IntEnum
-from typing import get_origin, get_args
-from cbor2 import CBORTag, loads as cbor2_loads
-from .cbor import (
-    PlutusTuple,
-    PlutusList,
-    PlutusByteString,
-    dumps as plutus_dumps,
-    get_tag,
-    get_constr_idx
-)
+from typing import get_args, get_origin
+
+from cbor2 import CBORTag
+from cbor2 import loads as cbor2_loads
+
+from .cbor import PlutusByteString, PlutusList, PlutusTuple, get_constr_idx, get_tag
+from .cbor import dumps as plutus_dumps
 
 
-class PlutusEncodable(ABC):
+class PlutusEncodable(ABC):  # noqa: B024
     def to_plutus(self):
-        encoded_fields = [to_plutus(getattr(self, f.name))
-                          for f in fields(self)]
+        encoded_fields = [to_plutus(getattr(self, f.name)) for f in fields(self)]
         return PlutusTuple(encoded_fields)
 
     def to_plutus_bytes(self) -> bytes:
         return plutus_dumps(self.to_plutus())
 
 
-class PlutusDecodable(ABC):
+class PlutusDecodable(ABC):  # noqa: B024
     @classmethod
     def from_plutus(cls, tag: CBORTag):
         _ensure_isinstance(tag, CBORTag)
         values = tag.value
-        cls_fields = fields(cls)
+        cls_fields = fields(cls)  # type: ignore[arg-type]
         if len(values) != len(cls_fields):
-            raise ValueError(
-                f"Expected {len(cls_fields)} constructor fields")
+            raise ValueError(f"Expected {len(cls_fields)} constructor fields")
 
         kwargs = {}
-        for f, value in zip(cls_fields, values):
+        for f, value in zip(cls_fields, values, strict=True):
             kwargs[f.name] = from_plutus(value, f.type)
         return cls(**kwargs)
 

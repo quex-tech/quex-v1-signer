@@ -1,7 +1,9 @@
-from typing import Any, List
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from cbor2 import CBOREncoder, CBORTag, dumps as cbor2_dumps
+from dataclasses import dataclass
+from typing import Any
+
+from cbor2 import CBOREncoder, CBORTag
+from cbor2 import dumps as cbor2_dumps
 
 CBOR_CONSTR0 = b"\xd8\x79"
 CBOR_BYTES_INDEF = b"\x5f"
@@ -52,7 +54,7 @@ class PlutusByteString(PlutusPrimitive):
         if len(self.value) > BYTES_MAX_CHUNK_SIZE:
             encoder.write(CBOR_BYTES_INDEF)
             for i in range(0, len(self.value), BYTES_MAX_CHUNK_SIZE):
-                chunk = self.value[i:i+BYTES_MAX_CHUNK_SIZE]
+                chunk = self.value[i : i + BYTES_MAX_CHUNK_SIZE]
                 encoder.encode(chunk)
             encoder.write(CBOR_BREAK)
         else:
@@ -61,7 +63,7 @@ class PlutusByteString(PlutusPrimitive):
 
 @dataclass
 class PlutusList(PlutusPrimitive):
-    items: List[Any]
+    items: list[Any]
 
     def encode(self, encoder: CBOREncoder) -> None:
         _write_indef_list(self.items, encoder)
@@ -69,14 +71,14 @@ class PlutusList(PlutusPrimitive):
 
 @dataclass
 class PlutusTuple(PlutusPrimitive):
-    items: List[Any]
+    items: list[Any]
 
     def encode(self, encoder: CBOREncoder) -> None:
         encoder.write(CBOR_CONSTR0)
         _write_indef_list(self.items, encoder)
 
 
-def _write_indef_list(items: List[Any], encoder: CBOREncoder) -> None:
+def _write_indef_list(items: list[Any], encoder: CBOREncoder) -> None:
     if items:
         encoder.write(CBOR_ARRAY_INDEF)
         for item in items:
@@ -88,6 +90,5 @@ def _write_indef_list(items: List[Any], encoder: CBOREncoder) -> None:
 
 def _encode_primitive(encoder: CBOREncoder, value: Any) -> None:
     if not isinstance(value, PlutusPrimitive):
-        raise TypeError(
-            f"Expected PlutusPrimitive, got {type(value)} instead.")
+        raise TypeError(f"Expected PlutusPrimitive, got {type(value)} instead.")
     value.encode(encoder)
