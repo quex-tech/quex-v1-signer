@@ -61,8 +61,8 @@ def get_timestamp() -> int:
     try:
         response = c.request("europe.pool.ntp.org", version=4)
         return round(response.tx_time)
-    except Exception:
-        raise GetTimestampError
+    except Exception as exc:
+        raise GetTimestampError from exc
 
 
 def process_json(input_json: dict, json_query: str, schema: str, encode) -> bytes:
@@ -72,13 +72,13 @@ def process_json(input_json: dict, json_query: str, schema: str, encode) -> byte
     try:
         ast = parser.parse(json_query)
         result = jq_eval(input_json, ast)
-    except Exception:
-        raise JQProcessingError
+    except Exception as exc:
+        raise JQProcessingError from exc
 
     try:
         return encode([schema], [result])
-    except Exception:
-        raise ABIEncodingError
+    except Exception as exc:
+        raise ABIEncodingError from exc
 
 
 class SSLAdapter(HTTPAdapter):
@@ -129,7 +129,7 @@ def make_request(qrr: HTTPRequest, as_json: bool = True):
     if as_json:
         try:
             return r.json()
-        except Exception:
-            raise ResponseNotJSONError
+        except Exception as exc:
+            raise ResponseNotJSONError from exc
     else:
         return r.text

@@ -77,8 +77,8 @@ class EncryptedPatchProcessor:
                 http_request.path += decrypted_path_suffix.decode('utf-8')
 
             return http_request
-        except Exception:
-            raise EncryptedPatchProcessingError
+        except Exception as exc:
+            raise EncryptedPatchProcessingError from exc
     
     def recover_ephemeral_public_key(self, action_id: bytes, proof: bytes) -> VerifyingKey:
         """
