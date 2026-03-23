@@ -168,5 +168,37 @@
       "filter": ".payload | @base64d"
     },
     "description": "POST request with encrypted header and body only"
+  },
+  {
+    "raw_action": {
+      "request": {
+        "method": "Get",
+        "host": "api.example.com",
+        "path": "/v1/prices",
+        "headers": [],
+        "parameters": [
+          {
+            "key": "base",
+            "value": "BTC"
+          }
+        ],
+        "body": ""
+      },
+      "patch": {
+        "parameters": [
+          {
+            "key": "quote",
+            "value": "USD"
+          },
+          {
+            "key": "window",
+            "value": "24h"
+          }
+        ]
+      },
+      "schema": "(string,string)",
+      "filter": "[.symbol, .window]"
+    },
+    "description": "GET request with encrypted parameters only"
   }
 ]
