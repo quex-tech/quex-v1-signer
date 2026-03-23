@@ -17,18 +17,25 @@ from quex_backend.ride.mixins import write_ride_bytes
 
 
 class TestModelsEncoding(unittest.TestCase):
-    f = open(Path(__file__).parent.resolve() / "test_vectors" / "http_action_test_vectors.json")
-    ethereum_httpaction_vectors = json.load(f)
-    f2 = open(Path(__file__).parent.resolve() / "test_vectors" / "plutus_http_action_test_vectors.json")
-    plutus_httpaction_vectors = json.load(f2)
-    f3 = open(Path(__file__).parent.resolve() / "test_vectors" / "ride_http_action_test_vectors.json")
-    ride_httpaction_vectors = json.load(f3)
-    f4 = open(Path(__file__).parent.resolve() / "test_vectors" / "oracle_message_test_vectors.json")
-    ethereum_oracle_message_vectors = json.load(f4)
-    f5 = open(Path(__file__).parent.resolve() / "test_vectors" / "plutus_oracle_message_test_vectors.json")
-    plutus_oracle_message_vectors = json.load(f5)
-    f6 = open(Path(__file__).parent.resolve() / "test_vectors" / "ride_oracle_message_test_vectors.json")
-    ride_oracle_message_vectors = json.load(f6)
+    test_vectors_dir = Path(__file__).parent.resolve() / "test_vectors"
+    ethereum_httpaction_vectors = json.loads(
+        (test_vectors_dir / "http_action_test_vectors.json").read_text()
+    )
+    plutus_httpaction_vectors = json.loads(
+        (test_vectors_dir / "plutus_http_action_test_vectors.json").read_text()
+    )
+    ride_httpaction_vectors = json.loads(
+        (test_vectors_dir / "ride_http_action_test_vectors.json").read_text()
+    )
+    ethereum_oracle_message_vectors = json.loads(
+        (test_vectors_dir / "oracle_message_test_vectors.json").read_text()
+    )
+    plutus_oracle_message_vectors = json.loads(
+        (test_vectors_dir / "plutus_oracle_message_test_vectors.json").read_text()
+    )
+    ride_oracle_message_vectors = json.loads(
+        (test_vectors_dir / "ride_oracle_message_test_vectors.json").read_text()
+    )
 
     def test_ethereum_HTTPAction_models_encoding(self):
         for v in self.ethereum_httpaction_vectors:

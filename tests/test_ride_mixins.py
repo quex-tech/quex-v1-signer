@@ -88,12 +88,27 @@ class TestReadRideBytes(unittest.TestCase):
             (b"\x00\x00\x00\x00\x00\x00\x00\x02\x00", bytes),
             (b"\x00\x00\x00\x00\x00\x00\x00\x01", str),
             (b"\x00\x00\x00\x00\x00\x00\x00\x02\x00", str),
+            (b"\xff\xff\xff\xff\xff\xff\xff\xff", bytes),
+            (b"\xff\xff\xff\xff\xff\xff\xff\xff", str),
+            (b"\xff\xff\xff\xff\xff\xff\xff\xff", List[int]),
         ]
 
         for value, target_type in cases:
             with self.subTest(input_value=value, target_type=target_type):
                 with self.assertRaises((ValueError, struct.error)):
                     read_ride_bytes(value, 0, target_type)
+
+
+class TestRideDecodable(unittest.TestCase):
+    def test_from_ride_bytes_rejects_trailing_bytes(self):
+        value = (
+            b"\x00\x00\x00\x00\x00\x00\x00\x01"
+            b"\x00\x00\x00\x00\x00\x00\x00\x05Hello"
+            b"\x00"
+        )
+
+        with self.assertRaises(ValueError):
+            MyClass.from_ride_bytes(value)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,9 @@ class RideEncodable(ABC):
 class RideDecodable(ABC):
     @classmethod
     def from_ride_bytes(cls, buf):
-        v, _ = cls.read_ride_bytes(buf, 0)
+        v, off = cls.read_ride_bytes(buf, 0)
+        if off != len(buf):
+            raise ValueError("trailing bytes")
         return v
 
     @classmethod
@@ -32,16 +34,16 @@ class RideDecodable(ABC):
         return cls(**kwargs), newoff
 
 
-class UnsupportedRideTypeError(BaseException):
+class UnsupportedRideTypeError(Exception):
     pass
 
 
 def write_ride_bytes(value, buf):
-    if isinstance(value, int):
-        buf.extend(struct.pack(">q", value))
-        return
     if isinstance(value, bool):
         buf.extend(struct.pack(">q", 1 if value else 0))
+        return
+    if isinstance(value, int):
+        buf.extend(struct.pack(">q", value))
         return
     if isinstance(value, bytes):
         buf.extend(struct.pack(">q", len(value)))
@@ -72,18 +74,26 @@ def read_ride_bytes(buf, off, target_type):
     if target_type is bool:
         return struct.unpack_from(">q", buf, off)[0] != 0, off + 8
     if target_type is bytes:
-        end = off + 8 + struct.unpack_from(">q", buf, off)[0]
+        length = struct.unpack_from(">q", buf, off)[0]
+        if length < 0:
+            raise ValueError("negative length")
+        end = off + 8 + length
         if end > len(buf):
             raise ValueError("not enough bytes")
         return buf[off + 8 : end], end
     if target_type is str:
-        end = off + 8 + struct.unpack_from(">q", buf, off)[0]
+        length = struct.unpack_from(">q", buf, off)[0]
+        if length < 0:
+            raise ValueError("negative length")
+        end = off + 8 + length
         if end > len(buf):
             raise ValueError("not enough bytes")
         return buf[off + 8 : end].decode(), end
     if get_origin(target_type) is list:
         inner_type = get_args(target_type)[0]
         count = struct.unpack_from(">q", buf, off)[0]
+        if count < 0:
+            raise ValueError("negative length")
         newoff = off + 8
         res = list()
         for i in range(count):
