@@ -2,7 +2,7 @@ import dataclasses
 from base64 import b64encode
 from dataclasses import dataclass, astuple, fields
 from enum import IntEnum
-from typing import List
+from typing import Any, List
 from urllib.parse import urljoin
 from abc import ABC, abstractmethod
 
@@ -16,7 +16,7 @@ from quex_backend.plutus.mixins import PlutusEncodable, PlutusDecodable
 from quex_backend.ride.mixins import RideDecodable, RideEncodable, write_ride_bytes
 
 
-def b64dict(obj):
+def b64dict(obj: Any) -> dict[str, Any]:
     return dataclasses.asdict(
         obj,
         dict_factory=lambda fields: {
@@ -26,7 +26,7 @@ def b64dict(obj):
     )
 
 
-def from_nested_tuple(t, class_constructor):
+def from_nested_tuple(t: Any, class_constructor: Any) -> Any:
     if "_name" in dir(class_constructor) and class_constructor._name == "List":
         return [from_nested_tuple(x, class_constructor.__args__[0]) for x in t]
     elif type(t) == tuple:
@@ -169,19 +169,19 @@ class HTTPRequest(
         # Use urljoin to properly concatenate host and path
         return urljoin(host, self.path)
 
-    def get_parameters(self):
-        params = {}
+    def get_parameters(self) -> dict[str, str]:
+        params: dict[str, str] = {}
         for p in self.parameters:
             params[p.key] = p.value
         return params
 
-    def get_headers(self):
-        headers = {}
+    def get_headers(self) -> dict[str, str]:
+        headers: dict[str, str] = {}
         for p in self.headers:
             headers[p.key] = p.value
         return headers
 
-    def get_body(self):
+    def get_body(self) -> bytes:
         return self.body
 
 
@@ -213,9 +213,10 @@ class EthereumHTTPActionWithProof(ABIEncodable):
     proof: bytes
 
     @staticmethod
-    def parse(data: bytes):
+    def parse(data: bytes) -> "EthereumHTTPActionWithProof":
         (data_tuple,) = eth_abi.decode([EthereumHTTPActionWithProof.obj_schema()], data)
-        return from_nested_tuple(data_tuple, EthereumHTTPActionWithProof)
+        result: EthereumHTTPActionWithProof = from_nested_tuple(data_tuple, EthereumHTTPActionWithProof)
+        return result
 
     @staticmethod
     def obj_schema() -> str:
@@ -233,8 +234,9 @@ class PlutusHTTPActionWithProof(PlutusDecodable):
     proof: bytes
 
     @classmethod
-    def parse(cls, data: bytes):
-        return cls.from_plutus_bytes(data)
+    def parse(cls, data: bytes) -> "PlutusHTTPActionWithProof":
+        result: PlutusHTTPActionWithProof = cls.from_plutus_bytes(data)  # type: ignore[assignment]
+        return result
 
 
 @dataclass
@@ -249,8 +251,9 @@ class RideHTTPActionWithProof(RideDecodable):
     proof: bytes
 
     @classmethod
-    def parse(cls, data: bytes):
-        return cls.from_ride_bytes(data)
+    def parse(cls, data: bytes) -> "RideHTTPActionWithProof":
+        result: RideHTTPActionWithProof = cls.from_ride_bytes(data)  # type: ignore[assignment]
+        return result
 
 
 #######################################
@@ -279,7 +282,8 @@ class ETHSignature:
     s: bytes
     v: int
 
-    def fromETH(sig):
+    @staticmethod
+    def fromETH(sig: Any) -> "ETHSignature":
         return ETHSignature(
             r=sig.r.to_bytes(32, "big"), s=sig.s.to_bytes(32, "big"), v=sig.v
         )
@@ -295,7 +299,7 @@ class DataItem(PlutusEncodable, RideEncodable):
     def obj_schema() -> str:
         return "(uint256,uint256,bytes)"
 
-    def to_plutus(self):
+    def to_plutus(self) -> PlutusTuple:
         return PlutusTuple([self.timestamp, self.error, PlutusRawData(self.value)])
 
 
@@ -311,19 +315,19 @@ class EthereumOracleMessage(OracleMessage, ABIEncodable):
     def obj_schema() -> str:
         return f"(bytes32,{DataItem.obj_schema()},address)"
 
-    def sign_with_account(self, account: Account):
+    def sign_with_account(self, account: Account) -> ETHSignature:
         msg = self.bytes()
         msghash = encode_defunct(keccak(msg))
         return ETHSignature.fromETH(account.sign_message(msghash))
 
 
 class PlutusOracleMessage(OracleMessage, PlutusEncodable):
-    def sign_with_account(self, account: Account):
+    def sign_with_account(self, account: Account) -> ETHSignature:
         msg = self.to_plutus_bytes()
         msghash = keccak(msg)
         return ETHSignature.fromETH(account.unsafe_sign_hash(msghash))
 
-    def to_plutus(self):
+    def to_plutus(self) -> PlutusTuple:
         return PlutusTuple(
             [
                 PlutusByteString(self.action_id),
@@ -334,12 +338,12 @@ class PlutusOracleMessage(OracleMessage, PlutusEncodable):
 
 
 class RideOracleMessage(OracleMessage, RideEncodable):
-    def sign_with_account(self, account: Account):
+    def sign_with_account(self, account: Account) -> ETHSignature:
         msg = self.to_ride_bytes()
         msghash = keccak(msg)
         return ETHSignature.fromETH(account.unsafe_sign_hash(msghash))
 
-    def write_ride_bytes(self, buf):
+    def write_ride_bytes(self, buf: Any) -> None:
         write_ride_bytes(self.action_id, buf)
         write_ride_bytes(bytes.fromhex(self.relayer.removeprefix("0x")), buf)
         write_ride_bytes(self.data_item, buf)

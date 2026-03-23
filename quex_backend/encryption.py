@@ -16,7 +16,7 @@ class EncryptedPatchProcessor:
         self.public_key = private_key.get_verifying_key()
 
     @staticmethod
-    def from_hex(private_key_hex: str):
+    def from_hex(private_key_hex: str) -> "EncryptedPatchProcessor":
         private_key = SigningKey.from_secret_exponent(int(private_key_hex, 16), curve=SECP256k1)
         return EncryptedPatchProcessor(private_key)
 

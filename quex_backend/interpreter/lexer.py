@@ -1,3 +1,5 @@
+from typing import Any
+
 import ply.lex as lex
 import re
 
@@ -33,15 +35,15 @@ t_GT = r'>'
 t_ALT = r'//'
 
 
-def t_FUNCTION_NO_ARGS(t):
+def t_FUNCTION_NO_ARGS(t: Any) -> Any:
     r'(abs|ceil|floor|round|sqrt|length|min|max|todate|fromdate|tonumber|add|any|all|not|@base64d|@base64|keys|to_entries|to_bytes)'
     return t
 
-def t_FUNCTION_WITH_ARGS(t):
+def t_FUNCTION_WITH_ARGS(t: Any) -> Any:
     r'(split|join|map)'
     return t
 
-def t_IDENT(t):
+def t_IDENT(t: Any) -> Any:
     r'[a-zA-Z_]\w*'
     t.type = 'IDENT'
     if t.value == 'and':
@@ -59,24 +61,24 @@ def t_IDENT(t):
         t.value = False
     return t
 
-def t_FLOAT(t):
+def t_FLOAT(t: Any) -> Any:
     r'\d+\.\d*'
     t.value = float(t.value)
     return t
 
-def t_INT(t):
+def t_INT(t: Any) -> Any:
     r'\d+'
     t.value = int(t.value)
     return t
 
-def t_STRING(t):
+def t_STRING(t: Any) -> Any:
     r'"(\\.|[^"])*"'
     t.value = t.value[1:-1]
     return t
 
 t_ignore = ' \r\n\t\f'
 
-def t_error(t):
+def t_error(t: Any) -> None:
     raise SyntaxError(f"Illegal character '{t.value[0]}' at position {t.lexpos}")
 
 

@@ -1,7 +1,7 @@
 from abc import ABC
 from dataclasses import fields
 from enum import IntEnum
-from typing import get_origin, get_args
+from typing import Any, get_origin, get_args
 from cbor2 import CBORTag, loads as cbor2_loads
 from .cbor import (
     PlutusTuple,
@@ -14,9 +14,9 @@ from .cbor import (
 
 
 class PlutusEncodable(ABC):
-    def to_plutus(self):
+    def to_plutus(self) -> PlutusTuple:
         encoded_fields = [to_plutus(getattr(self, f.name))
-                          for f in fields(self)]
+                          for f in fields(self)]  # type: ignore[arg-type]  # always used with @dataclass
         return PlutusTuple(encoded_fields)
 
     def to_plutus_bytes(self) -> bytes:
@@ -25,7 +25,7 @@ class PlutusEncodable(ABC):
 
 class PlutusDecodable(ABC):
     @classmethod
-    def from_plutus(cls, tag: CBORTag):
+    def from_plutus(cls, tag: CBORTag) -> "PlutusDecodable":
         _ensure_isinstance(tag, CBORTag)
         values = tag.value
         cls_fields = fields(cls)  # type: ignore[arg-type]  # always used with @dataclass
@@ -39,11 +39,11 @@ class PlutusDecodable(ABC):
         return cls(**kwargs)
 
     @classmethod
-    def from_plutus_bytes(cls, b):
+    def from_plutus_bytes(cls, b: bytes) -> "PlutusDecodable":
         return cls.from_plutus(cbor2_loads(b))
 
 
-def to_plutus(value):
+def to_plutus(value: Any) -> Any:
     if isinstance(value, PlutusEncodable):
         return value.to_plutus()
     if isinstance(value, bytes):
@@ -57,7 +57,7 @@ def to_plutus(value):
     return value
 
 
-def from_plutus(value, target_type):
+def from_plutus(value: Any, target_type: Any) -> Any:
     if target_type is bytes:
         _ensure_isinstance(value, bytes)
         return value
@@ -75,6 +75,6 @@ def from_plutus(value, target_type):
     return value
 
 
-def _ensure_isinstance(value, target_type):
+def _ensure_isinstance(value: Any, target_type: type[Any]) -> None:
     if not isinstance(value, target_type):
         raise TypeError(f"Expected {target_type}, got {type(value)} {value}")

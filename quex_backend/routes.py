@@ -1,4 +1,5 @@
 from base64 import b64decode
+from typing import Any
 
 from eth_abi import encode as eth_abi_encode
 from eth_keys import keys
@@ -43,27 +44,27 @@ PLUTUS_MAGIC = b"\xd8\x79\x9f"
 
 
 @bp.route("/quote")
-def quote():
+def quote() -> dict[str, Any]:
     sk = keys.PrivateKey(account.key)
     quote_bin = get_quote(sk.public_key.to_bytes())
-    quote = TDQuote.deserialize(quote_bin)
+    quote = TDQuote.deserialize(quote_bin)  # type: ignore[arg-type]
     return b64dict(quote)
 
 
 @bp.route("/address")
-def address():
-    return account.address
+def address() -> str:
+    return str(account.address)
 
 
 @bp.route("/pubkey")
-def pubkey():
+def pubkey() -> str:
     sk = keys.PrivateKey(account.key)
     return hex(sk.public_key)
 
 
 @bp.route("/query", methods=["POST"])
-def query():
-    def create_response(msg_cls, action_id: bytes, relayer: str, status_code: QuexErrorCodes, response: bytes = b""):
+def query() -> dict[str, Any]:
+    def create_response(msg_cls: type[Any], action_id: bytes, relayer: str, status_code: QuexErrorCodes, response: bytes = b"") -> dict[str, Any]:
         msg = msg_cls(
             data_item=DataItem(
                 timestamp=get_timestamp(),
@@ -82,6 +83,8 @@ def query():
     fmt = request.get_json().get("format", "")
     action_bytes = b64decode(action)
 
+    action_cls: type[Any]
+    msg_cls: type[Any]
     if fmt.casefold() == "ride":
         action_cls = RideHTTPActionWithProof
         msg_cls = RideOracleMessage

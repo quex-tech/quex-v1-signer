@@ -4,8 +4,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .iterator import JqIterator
+from .tree import Node
 
-def _primitive_to_str(x):
+
+def _primitive_to_str(x: Any) -> str:
     if type(x) == bool:
         return 'true' if x else 'false'
     elif type(x) == int or type(x) == float:
@@ -17,17 +19,17 @@ def _primitive_to_str(x):
     else:
         raise ValueError
 
-def _iterate_values(obj):
+def _iterate_values(obj: Any) -> Any:
     if isinstance(obj, list):
         return obj
     if isinstance(obj, dict):
         return obj.values()
     raise ValueError("Cannot iterate over type", type(obj))
 
-def _object_to_bool(obj):
+def _object_to_bool(obj: Any) -> bool:
     return obj != False and obj is not None
 
-def _binop_add(left, right):
+def _binop_add(left: Any, right: Any) -> Any:
     if left is None:
         return right
     if right is None:
@@ -40,55 +42,55 @@ def _binop_add(left, right):
         return left + right
     raise ValueError(f"Cannot add {type(left)} and {type(right)} values")
 
-def _binop_sub(left, right):
+def _binop_sub(left: Any, right: Any) -> Any:
     if isinstance(left, (int, float)) and isinstance(right, (int, float)):
         return left - right
     raise ValueError(f"Cannot subtract {type(left)} and {type(right)} values")
 
-def _binop_mul(left, right):
+def _binop_mul(left: Any, right: Any) -> Any:
     if isinstance(left, (int, float)) and isinstance(right, (int, float)):
         return left * right
     raise ValueError(f"Cannot multiply {type(left)} and {type(right)} values")
 
-def _binop_div(left, right):
+def _binop_div(left: Any, right: Any) -> Any:
     if isinstance(left, (int, float)) and isinstance(right, (int, float)):
         return left / right
     raise ValueError(f"Cannot divide {type(left)} and {type(right)} values")
 
-def _binop_mod(left, right):
+def _binop_mod(left: Any, right: Any) -> Any:
     if isinstance(left, (int, float)) and isinstance(right, (int, float)):
         return left % right
     raise ValueError(f"Cannot modulo {type(left)} and {type(right)} values")
 
-def _binop_eq(left, right):
+def _binop_eq(left: Any, right: Any) -> Any:
     return left == right
 
-def _binop_neq(left, right):
+def _binop_neq(left: Any, right: Any) -> Any:
     return left != right
 
-def _binop_lt(left, right):
+def _binop_lt(left: Any, right: Any) -> Any:
     return left < right
 
-def _binop_le(left, right):
+def _binop_le(left: Any, right: Any) -> Any:
     return left <= right
 
-def _binop_gt(left, right):
+def _binop_gt(left: Any, right: Any) -> Any:
     return left > right
 
-def _binop_ge(left, right):
+def _binop_ge(left: Any, right: Any) -> Any:
     return left >= right
 
-def _binop_or(left, right):
+def _binop_or(left: Any, right: Any) -> bool:
     return _object_to_bool(left) or _object_to_bool(right)
 
-def _binop_and(left, right):
+def _binop_and(left: Any, right: Any) -> bool:
     return _object_to_bool(left) and _object_to_bool(right)
 
-def _binop_alt(left, right):
+def _binop_alt(left: Any, right: Any) -> Any:
     return left or right
 
-def binop(op, left, right):
-    operations = {
+def binop(op: str, left: Any, right: Any) -> Any:
+    operations: dict[str, Any] = {
         '+': _binop_add,
         '-': _binop_sub,
         '*': _binop_mul,
@@ -115,7 +117,7 @@ def binop(op, left, right):
         return JqIterator([operation(left, x) for x in right])
     return operation(left, right)
 
-def select(obj, selector):
+def select(obj: Any, selector: Any) -> Any:
     if isinstance(obj, JqIterator):
         return JqIterator([select(x, selector) for x in obj])
     if isinstance(obj, dict):
@@ -128,7 +130,7 @@ def select(obj, selector):
         return None
     raise ValueError(f"Cannot select {type(obj)} with {type(selector)}")
 
-def slice(obj, start, end):
+def slice(obj: Any, start: Any, end: Any) -> Any:
     if isinstance(obj, (str, list)):
         if start is None:
             start = 0
@@ -137,7 +139,7 @@ def slice(obj, start, end):
         return obj[start:end]
     raise ValueError(f"Cannot slice {type(obj)}")
 
-def _func_add(obj: "list[Any]"):
+def _func_add(obj: list[Any]) -> Any:
     if len(obj) == 0:
         return None
     result = obj[0]
@@ -145,8 +147,8 @@ def _func_add(obj: "list[Any]"):
         result += obj[i]
     return result
 
-def function_no_args(func, obj):
-    functions = {
+def function_no_args(func: str, obj: Any) -> Any:
+    functions: dict[str, Any] = {
         'abs': abs,
         'ceil': math.ceil,
         'floor': math.floor,
@@ -168,7 +170,7 @@ def function_no_args(func, obj):
         'to_entries': lambda x: [{"key": a, "value": b} for a, b in x.items()],
         'to_bytes': lambda x: x.encode('utf8')
     }
-    supported_types = {
+    supported_types: dict[str, Any] = {
         'abs': (int, float),
         'ceil': (int, float),
         'floor': (int, float),
@@ -191,7 +193,7 @@ def function_no_args(func, obj):
         'to_bytes': (str,),
     }
 
-    preprocess_functions = {
+    preprocess_functions: dict[str, Any] = {
         'not': _object_to_bool,
     }
 
@@ -211,8 +213,8 @@ def function_no_args(func, obj):
     
     return functions[func](obj)
 
-def function_with_one_arg(func, obj, arg):
-    functions = {
+def function_with_one_arg(func: str, obj: Any, arg: Any) -> Any:
+    functions: dict[str, Any] = {
         'neg': lambda _, arg: -arg,
         'split': lambda obj, arg: obj.split(arg),
         'join': lambda obj, arg: arg.join([_primitive_to_str(x) for x in _iterate_values(obj)]),
@@ -221,20 +223,20 @@ def function_with_one_arg(func, obj, arg):
         'toarray': lambda _, arg: list(arg),
     }
 
-    supported_obj_types = {
+    supported_obj_types: dict[str, Any] = {
         'split': (str,),
         'join': (list,),
         'map': (list, dict),
     }
 
-    need_eval_arg = set([
+    need_eval_arg: set[str] = set([
         'neg',
         'split',
         'join',
         'iterator',
     ])
 
-    supported_arg_types = {
+    supported_arg_types: dict[str, Any] = {
         'neg': (int, float),
         'split': (str,),
         'join': (str,),
@@ -258,7 +260,7 @@ def function_with_one_arg(func, obj, arg):
     return functions[func](obj, arg)
 
 
-def jq_eval(obj, ast):
+def jq_eval(obj: Any, ast: Node) -> Any:
     if ast.type == 'atomic':
         return ast.children[0]
     elif ast.type == 'ident':
@@ -288,7 +290,7 @@ def jq_eval(obj, ast):
     elif ast.type == 'pipe':
         return jq_eval(jq_eval(obj, ast.children[0]), ast.children[1])
     elif ast.type == 'array':
-        result = []
+        result: list[Any] = []
         for child in ast.children:
             values = jq_eval(obj, child)
             if isinstance(values, JqIterator):
