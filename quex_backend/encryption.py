@@ -80,7 +80,7 @@ class EncryptedPatchProcessor:
         except Exception:
             raise EncryptedPatchProcessingError
     
-    def recover_ephemeral_public_key(self, action_id: int, proof: bytes) -> VerifyingKey:
+    def recover_ephemeral_public_key(self, action_id: bytes, proof: bytes) -> VerifyingKey:
         """
         Recover 64-byte (x||y) public key from a signature produced by the
         ephemeral private key that also encrypted the message.
