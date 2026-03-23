@@ -61,7 +61,7 @@ def get_timestamp() -> int:
     """
     try:
         response = c.request("europe.pool.ntp.org", version=4)
-        return int(round(response.tx_time))
+        return round(float(response.tx_time))
     except Exception as exc:
         raise GetTimestampError from exc
 
