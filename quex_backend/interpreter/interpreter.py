@@ -1,6 +1,8 @@
 import base64
-from datetime import datetime, timezone
 import math
+from datetime import datetime, timezone
+from typing import Any
+
 from .iterator import JqIterator
 
 def _primitive_to_str(x):
@@ -135,7 +137,7 @@ def slice(obj, start, end):
         return obj[start:end]
     raise ValueError(f"Cannot slice {type(obj)}")
 
-def _func_add(obj: list):
+def _func_add(obj: "list[Any]"):
     if len(obj) == 0:
         return None
     result = obj[0]

@@ -1,6 +1,13 @@
 [tool.mypy]
 python_version = "3.12"
 warn_unused_configs = true
+warn_return_any = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+no_implicit_reexport = true
+strict_equality = true
+disallow_any_generics = true
 exclude = [
     "quex_backend/td_quote\\.py$",
     "quex_backend/interpreter/parsetab\\.py$",
@@ -24,3 +31,4 @@ module = [
     "dotenv.*",
 ]
 ignore_missing_imports = true
+implicit_reexport = true

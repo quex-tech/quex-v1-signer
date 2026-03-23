@@ -1,4 +1,5 @@
 import ssl
+from typing import Any
 
 import ntplib
 import requests
@@ -60,12 +61,12 @@ def get_timestamp() -> int:
     """
     try:
         response = c.request("europe.pool.ntp.org", version=4)
-        return round(response.tx_time)
+        return int(round(response.tx_time))
     except Exception as exc:
         raise GetTimestampError from exc
 
 
-def process_json(input_json: dict, json_query: str, schema: str, encode) -> bytes:
+def process_json(input_json: dict[str, Any], json_query: str, schema: str, encode) -> bytes:
     """
     Execute JQ program over the input data and encode the result according to the schema provided.
     """
@@ -76,7 +77,8 @@ def process_json(input_json: dict, json_query: str, schema: str, encode) -> byte
         raise JQProcessingError from exc
 
     try:
-        return encode([schema], [result])
+        encoded: bytes = encode([schema], [result])
+        return encoded
     except Exception as exc:
         raise ABIEncodingError from exc
 

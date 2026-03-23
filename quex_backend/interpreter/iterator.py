@@ -1,5 +1,8 @@
+from typing import Any
+
+
 class JqIterator:
-    def __init__(self, obj: list):
+    def __init__(self, obj: list[Any]):
         self.obj = obj
 
     def __iter__(self):
