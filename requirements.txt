@@ -53,3 +53,4 @@ waitress==3.0.0
 Werkzeug==3.0.4
 wrapt==1.16.0
 mypy>=1.8
+types-requests>=2.31
