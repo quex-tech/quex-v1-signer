@@ -34,7 +34,8 @@ class EncryptedPatchProcessor:
         symm_key = HKDF(b'\x04' + ephemeral_public_key.to_string() + shared_key, 32, salt=None, hashmod=SHA256)  # type: ignore[arg-type]  # pycryptodome HKDF accepts None
 
         # Decrypt the message using AES-GCM
-        assert isinstance(symm_key, bytes)
+        if not isinstance(symm_key, bytes):
+            raise TypeError(f"HKDF returned {type(symm_key)}, expected bytes")
         cipher = AES.new(symm_key, AES.MODE_GCM, nonce=nonce)
         decrypted_message = cipher.decrypt_and_verify(ciphertext, tag)
 

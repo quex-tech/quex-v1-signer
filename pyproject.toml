@@ -21,5 +21,6 @@ module = [
     "eth_keys.*",
     "eth_utils.*",
     "Crypto.*",
+    "dotenv.*",
 ]
 ignore_missing_imports = true

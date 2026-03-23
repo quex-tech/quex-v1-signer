@@ -187,14 +187,14 @@ class HTTPRequest(
 
 # QuexRequest structure
 @dataclass
-class HTTPAction:
+class HTTPAction(ABC):
     request: HTTPRequest
     patch: HTTPPrivatePatch
     schema: str  # ResultSchema as a string for now
     filter: str  # JqFilter as a string for now
 
-    def action_id(self) -> bytes:
-        raise NotImplementedError
+    @abstractmethod
+    def action_id(self) -> bytes: ...
 
 
 # RequestActionWithProof structure
