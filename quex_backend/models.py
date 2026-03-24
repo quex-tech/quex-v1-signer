@@ -198,6 +198,7 @@ class HTTPAction(ABC):
 
 
 # RequestActionWithProof structure
+@dataclass
 class EthereumHTTPAction(HTTPAction, ABIEncodable):
     @staticmethod
     def obj_schema() -> str:
@@ -223,6 +224,7 @@ class EthereumHTTPActionWithProof(ABIEncodable):
         return f"({EthereumHTTPAction.obj_schema()},bytes)"
 
 
+@dataclass
 class PlutusHTTPAction(HTTPAction, PlutusEncodable, PlutusDecodable):
     def action_id(self) -> bytes:
         return keccak(self.to_plutus_bytes())
@@ -235,7 +237,7 @@ class PlutusHTTPActionWithProof(PlutusDecodable):
 
     @classmethod
     def parse(cls, data: bytes) -> "PlutusHTTPActionWithProof":
-        result: PlutusHTTPActionWithProof = cls.from_plutus_bytes(data)  # type: ignore[assignment]
+        result: PlutusHTTPActionWithProof = cls.from_plutus_bytes(data)
         return result
 
 
@@ -252,7 +254,7 @@ class RideHTTPActionWithProof(RideDecodable):
 
     @classmethod
     def parse(cls, data: bytes) -> "RideHTTPActionWithProof":
-        result: RideHTTPActionWithProof = cls.from_ride_bytes(data)  # type: ignore[assignment]
+        result: RideHTTPActionWithProof = cls.from_ride_bytes(data)
         return result
 
 
@@ -343,7 +345,7 @@ class RideOracleMessage(OracleMessage, RideEncodable):
         msghash = keccak(msg)
         return ETHSignature.fromETH(account.unsafe_sign_hash(msghash))
 
-    def write_ride_bytes(self, buf: Any) -> None:
+    def write_ride_bytes(self, buf: bytearray) -> None:
         write_ride_bytes(self.action_id, buf)
         write_ride_bytes(bytes.fromhex(self.relayer.removeprefix("0x")), buf)
         write_ride_bytes(self.data_item, buf)

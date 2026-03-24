@@ -2,7 +2,7 @@ import struct
 from abc import ABC
 from dataclasses import fields
 from enum import IntEnum
-from typing import Any, get_origin, get_args
+from typing import Any, Self, get_args, get_origin
 
 
 class RideEncodable(ABC):
@@ -18,14 +18,14 @@ class RideEncodable(ABC):
 
 class RideDecodable(ABC):
     @classmethod
-    def from_ride_bytes(cls, buf: bytes | bytearray) -> "RideDecodable":
+    def from_ride_bytes(cls, buf: bytes | bytearray) -> Self:
         v, off = cls.read_ride_bytes(buf, 0)
         if off != len(buf):
             raise ValueError("trailing bytes")
         return v
 
     @classmethod
-    def read_ride_bytes(cls, buf: bytes | bytearray, off: int) -> tuple["RideDecodable", int]:
+    def read_ride_bytes(cls, buf: bytes | bytearray, off: int) -> tuple[Self, int]:
         kwargs = {}
         newoff = off
         for f in fields(cls):  # type: ignore[arg-type]  # always used with @dataclass

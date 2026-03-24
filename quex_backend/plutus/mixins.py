@@ -1,7 +1,7 @@
 from abc import ABC
 from dataclasses import fields
 from enum import IntEnum
-from typing import Any, get_origin, get_args
+from typing import Any, Self, get_args, get_origin
 from cbor2 import CBORTag, loads as cbor2_loads
 from .cbor import (
     PlutusTuple,
@@ -25,7 +25,7 @@ class PlutusEncodable(ABC):
 
 class PlutusDecodable(ABC):
     @classmethod
-    def from_plutus(cls, tag: CBORTag) -> "PlutusDecodable":
+    def from_plutus(cls, tag: CBORTag) -> Self:
         _ensure_isinstance(tag, CBORTag)
         values = tag.value
         cls_fields = fields(cls)  # type: ignore[arg-type]  # always used with @dataclass
@@ -39,7 +39,7 @@ class PlutusDecodable(ABC):
         return cls(**kwargs)
 
     @classmethod
-    def from_plutus_bytes(cls, b: bytes) -> "PlutusDecodable":
+    def from_plutus_bytes(cls, b: bytes) -> Self:
         return cls.from_plutus(cbor2_loads(b))
 
 

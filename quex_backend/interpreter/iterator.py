@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from typing import Any
 
 
@@ -5,7 +6,7 @@ class JqIterator:
     def __init__(self, obj: list[Any]):
         self.obj = obj
 
-    def __iter__(self) -> Any:
+    def __iter__(self) -> Iterator[Any]:
         return self.obj.__iter__()
 
     def __eq__(self, other: object) -> bool:
