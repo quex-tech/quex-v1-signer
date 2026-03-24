@@ -1,38 +1,40 @@
-name: Python Tests
+name: CI
 
 on:
-  pull_request:  # Run tests only for pull requests
+  pull_request:
 
 jobs:
-  test:
+  typecheck:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        python-version: [3.11]  # Only run tests on the latest Python version
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3  # Checkout the repository
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
+          python-version: "3.12"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Check types
+        run: mypy quex_backend --exclude 'td_quote\.py$' --exclude 'parsetab\.py$'
 
-      - name: Set PYTHONPATH
-        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV  # Add the root directory to PYTHONPATH
-
-      - name: Set Environment Variables from .env
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
         run: |
-          echo "CONFIG=$(pwd)/config.toml" >> $GITHUB_ENV  # Set path to the TOML file
-          echo "ETH_SIGNER_KEY_FILE=\"sk.txt\"" >> $GITHUB_ENV
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+      - name: Set environment variables
+        run: |
+          echo "CONFIG=$(pwd)/config.toml" >> $GITHUB_ENV
+          echo "ETH_SIGNER_KEY_FILE=sk.txt" >> $GITHUB_ENV
           echo "DEBUG=1" >> $GITHUB_ENV
-
       - name: Run tests
         run: pytest

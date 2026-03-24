@@ -1,17 +1,21 @@
+from collections.abc import Iterator
+from typing import Any
+
+
 class JqIterator:
-    def __init__(self, obj: list):
+    def __init__(self, obj: list[Any]):
         self.obj = obj
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return self.obj.__iter__()
-    
-    def __eq__(self, other):
+
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, JqIterator):
             return self.obj == other.obj
         return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return f"Iterator{self.obj}"

@@ -1,4 +1,5 @@
 import ssl
+from typing import Any, Callable
 
 import ntplib
 import requests
@@ -60,12 +61,12 @@ def get_timestamp() -> int:
     """
     try:
         response = c.request("europe.pool.ntp.org", version=4)
-        return round(response.tx_time)
+        return round(float(response.tx_time))
     except Exception as exc:
         raise GetTimestampError from exc
 
 
-def process_json(input_json: dict, json_query: str, schema: str, encode) -> bytes:
+def process_json(input_json: dict[str, Any], json_query: str, schema: str, encode: Callable[[list[str], list[Any]], bytes]) -> bytes:
     """
     Execute JQ program over the input data and encode the result according to the schema provided.
     """
@@ -76,22 +77,23 @@ def process_json(input_json: dict, json_query: str, schema: str, encode) -> byte
         raise JQProcessingError from exc
 
     try:
-        return encode([schema], [result])
+        encoded: bytes = encode([schema], [result])
+        return encoded
     except Exception as exc:
         raise ABIEncodingError from exc
 
 
 class SSLAdapter(HTTPAdapter):
-    def __init__(self, ssl_context=None, **kwargs):
+    def __init__(self, ssl_context: ssl.SSLContext | None = None, **kwargs: Any) -> None:
         self.ssl_context = ssl_context
         super().__init__(**kwargs)
 
-    def init_poolmanager(self, *args, **kwargs):
+    def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
         kwargs["ssl_context"] = self.ssl_context
-        return super().init_poolmanager(*args, **kwargs)
+        super().init_poolmanager(*args, **kwargs)
 
 
-def make_request(qrr: HTTPRequest, as_json: bool = True):
+def make_request(qrr: HTTPRequest, as_json: bool = True) -> Any:
     try:
         url = qrr.build_url()
 

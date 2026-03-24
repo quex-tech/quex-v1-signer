@@ -1,4 +1,7 @@
+from typing import Any, cast
+
 from flask import Flask
+from werkzeug.wrappers import Response
 from flask_limiter.util import get_remote_address
 from flask_limiter import Limiter
 from werkzeug.exceptions import HTTPException
@@ -14,18 +17,18 @@ from Crypto.Random import get_random_bytes
 dotenv.load_dotenv()
 
 if os.environ.get("DEBUG"):
-    def get_quote(report_data):
+    def get_quote(report_data: bytes) -> bytes:
         with open("quote.dat", 'rb') as f:
             quote_bin = f.read()
         return quote_bin
-    def get_report(report_data):
+    def get_report(report_data: bytes) -> bytes:
         with open("report.dat", 'rb') as f:
             report_bin = f.read()
         return report_bin
 else:
-    from pyquex_tdx import get_quote, get_report
+    from pyquex_tdx import get_quote, get_report  # type: ignore[no-redef]
 
-def get_sk():
+def get_sk() -> str:
     env_sk = os.getenv("TD_SECRET_KEY")
     if env_sk:
         try:
@@ -36,7 +39,7 @@ def get_sk():
 
     return get_random_bytes(32).hex()
 
-key_file = os.environ.get("ETH_SIGNER_KEY_FILE")
+key_file = os.environ["ETH_SIGNER_KEY_FILE"]
 if not pathlib.Path(key_file).is_file():
     with open(key_file, 'w') as f:
         f.write(get_sk())
@@ -47,19 +50,19 @@ with open(key_file, 'r') as f:
 account = Account.from_key("0x"+sk)
 patch_processor = EncryptedPatchProcessor.from_hex(sk)
 
-def create_app():
+def create_app() -> Flask:
     app = Flask(__name__, instance_relative_config=True)
 
     app.config.from_file(
-            os.environ.get("CONFIG"),
-            load=tomllib.load, 
+            os.environ["CONFIG"],
+            load=tomllib.load,
             text=False
             )
 
 
     @app.errorhandler(HTTPException)
-    def handle_exception(e):
-        response = e.get_response()
+    def handle_exception(e: HTTPException) -> Response:
+        response = cast(Response, e.get_response())
         response.data = json.dumps({
             "code": e.code,
             "title": e.name,

@@ -12,80 +12,80 @@ from .cbor import PlutusByteString, PlutusList, PlutusTuple, dumps
 
 
 class PlutusBaseEncoder(BaseEncoder):
-    def encode(self, value) -> bytes:
+    def encode(self, value: Any) -> bytes:
         self.validate_value(value)
         return dumps(self.to_primitive(value))
 
     @abstractmethod
-    def to_primitive(self, value) -> Any:
+    def to_primitive(self, value: Any) -> Any:
         pass
 
 
 class IntegerEncoder(PlutusBaseEncoder):
-    def validate_value(self, value) -> None:
+    def validate_value(self, value: Any) -> None:
         if not isinstance(value, int):
             type(self).invalidate_value(value, msg="must be an integer")
 
-    def to_primitive(self, value):
+    def to_primitive(self, value: Any) -> Any:
         return value
 
     @classmethod
     @parse_type_str("int")
-    def from_type_str(cls, type_str, registry):
+    def from_type_str(cls, type_str: Any, registry: Any) -> "IntegerEncoder":
         return cls()
 
 
 class UnsignedIntegerEncoder(PlutusBaseEncoder):
-    def validate_value(self, value) -> None:
+    def validate_value(self, value: Any) -> None:
         if not isinstance(value, int):
             type(self).invalidate_value(value, msg="must be an integer")
         if value < 0:
             type(self).invalidate_value(
                 value, msg="must be non-negative")
 
-    def to_primitive(self, value):
+    def to_primitive(self, value: Any) -> Any:
         return value
 
     @classmethod
     @parse_type_str("uint")
-    def from_type_str(cls, type_str, registry):
+    def from_type_str(cls, type_str: Any, registry: Any) -> "UnsignedIntegerEncoder":
         return cls()
 
 
 class BoolEncoder(PlutusBaseEncoder):
-    def validate_value(self, value) -> None:
+    def validate_value(self, value: Any) -> None:
         if not isinstance(value, bool):
             type(self).invalidate_value(value, msg="must be a boolean")
 
-    def to_primitive(self, value):
+    def to_primitive(self, value: Any) -> CBORTag:
         return CBORTag(122 if value else 121, [])
 
     @classmethod
     @parse_type_str("bool")
-    def from_type_str(cls, type_str, registry):
+    def from_type_str(cls, type_str: Any, registry: Any) -> "BoolEncoder":
         return cls()
 
 
 class StringEncoder(PlutusBaseEncoder):
-    def validate_value(self, value) -> None:
+    def validate_value(self, value: Any) -> None:
         if not isinstance(value, str):
             type(self).invalidate_value(value, msg="must be a string")
 
-    def to_primitive(self, value):
+    def to_primitive(self, value: Any) -> PlutusByteString:
         return PlutusByteString(value.encode())
 
     @classmethod
     @parse_type_str("string")
-    def from_type_str(cls, type_str, registry):
+    def from_type_str(cls, type_str: Any, registry: Any) -> "StringEncoder":
         return cls()
 
 
 class TupleEncoder(PlutusBaseEncoder):
-    def __init__(self, encoders):
+    def __init__(self, encoders: tuple[PlutusBaseEncoder, ...]) -> None:
         super().__init__()
         self.encoders = encoders
 
-    def validate_value(self, value) -> None:
+    def validate_value(self, value: Any) -> None:
         if not isinstance(value, (tuple, list)):
             type(self).invalidate_value(
                 value, msg="must be a tuple or list")
@@ -101,7 +101,7 @@ class TupleEncoder(PlutusBaseEncoder):
         for item, encoder in zip(value, self.encoders):
             encoder.validate_value(item)
 
-    def to_primitive(self, value):
+    def to_primitive(self, value: Any) -> PlutusTuple:
         primitives = [
             encoder.to_primitive(field) for field, encoder in zip(value, self.encoders)
         ]
@@ -109,19 +109,19 @@ class TupleEncoder(PlutusBaseEncoder):
 
     @classmethod
     @parse_tuple_type_str
-    def from_type_str(cls, type_str, registry):
+    def from_type_str(cls, type_str: Any, registry: Any) -> "TupleEncoder":
         encoders = tuple(registry.get_encoder(comp.to_type_str())
                          for comp in type_str.components)
         return cls(encoders=encoders)
 
 
 class ArrayEncoder(PlutusBaseEncoder):
-    def __init__(self, item_encoder, array_size=None):
+    def __init__(self, item_encoder: PlutusBaseEncoder, array_size: int | None = None) -> None:
         super().__init__()
         self.item_encoder = item_encoder
         self.array_size = array_size
 
-    def validate_value(self, value) -> None:
+    def validate_value(self, value: Any) -> None:
         if not isinstance(value, list):
             type(self).invalidate_value(value, msg="must be a list")
 
@@ -136,12 +136,12 @@ class ArrayEncoder(PlutusBaseEncoder):
         for item in value:
             self.item_encoder.validate_value(item)
 
-    def to_primitive(self, value):
+    def to_primitive(self, value: Any) -> PlutusList:
         return PlutusList([self.item_encoder.to_primitive(item) for item in value])
 
     @classmethod
     @parse_type_str(with_arrlist=True)
-    def from_type_str(cls, type_str, registry):
+    def from_type_str(cls, type_str: Any, registry: Any) -> "ArrayEncoder":
         item_encoder = registry.get_encoder(type_str.item_type.to_type_str())
         array_spec = type_str.arrlist[-1]
 

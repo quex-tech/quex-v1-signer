@@ -1,3 +1,5 @@
+from typing import Any
+
 from .tree import Node
 from .lexer import tokens, literals
 import ply.yacc as yacc
@@ -15,7 +17,7 @@ precedence = (
     ('left', '.'),
 )
 
-def p_exp(p):
+def p_exp(p: Any) -> None:
     '''
     exp : atomic
         | object
@@ -27,7 +29,7 @@ def p_exp(p):
     else:
         p[0] = p[2]
 
-def p_atomic(p):
+def p_atomic(p: Any) -> None:
     '''
     atomic : STRING 
         | INT
@@ -38,7 +40,7 @@ def p_atomic(p):
     '''
     p[0] = Node('atomic', [p[1]])
 
-def p_object(p):
+def p_object(p: Any) -> None:
     '''
     object : select
         | slice
@@ -53,19 +55,19 @@ def p_object(p):
     else:
         p[0] = p[1]
 
-def p_iterator(p):
+def p_iterator(p: Any) -> None:
     '''
     iterator : object '[' ']'
     '''
     p[0] = Node('func_with_one_arg', ['iterator', p[1]])
 
-def p_unary_exp(p):
+def p_unary_exp(p: Any) -> None:
     '''
     unary_exp : '-' exp %prec UMINUS
     '''
     p[0] = Node('func_with_one_arg', ['neg', p[2]])
 
-def p_binary_exp(p):
+def p_binary_exp(p: Any) -> None:
     '''
     binary_exp : exp '+' exp
         | exp '-' exp
@@ -88,7 +90,7 @@ def p_binary_exp(p):
     else:
         p[0] = Node("binop", [p[2], p[1], p[3]])
 
-def p_select(p):
+def p_select(p: Any) -> None:
     '''
     select : '.' IDENT
            | '.' STRING
@@ -106,7 +108,7 @@ def p_select(p):
     else:
         p[0] = Node('select', [p[1], p[4]])
 
-def p_slice(p):
+def p_slice(p: Any) -> None:
     '''
     slice : object '[' exp ':' exp ']'
         | object '[' ':' exp ']'
@@ -120,13 +122,13 @@ def p_slice(p):
     else: # [a:b]
         p[0] = Node('slice', [p[1], p[3], p[5]])
 
-def p_array_construction(p):
+def p_array_construction(p: Any) -> None:
     '''
     array_construction : '[' array_entries ']'
     '''
     p[0] = p[2]
 
-def p_array_entries(p):
+def p_array_entries(p: Any) -> None:
     '''
     array_entries : 
         | exp 
@@ -140,7 +142,7 @@ def p_array_entries(p):
         p[0] = Node('array', [p[1]] + p[3].children)
 
 
-def p_function_call(p):
+def p_function_call(p: Any) -> None:
     '''
     function_call : FUNCTION_NO_ARGS 
         | FUNCTION_WITH_ARGS '(' exp ')'
@@ -151,7 +153,7 @@ def p_function_call(p):
         p[0] = Node('func_with_one_arg', [p[1], p[3]])
 
 
-def p_error(p):
+def p_error(p: Any) -> None:
     raise ValueError(f"Syntax error: {p}")
 
 parser = yacc.yacc()

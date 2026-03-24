@@ -7,3 +7,4 @@ __pycache__/
 quex_backend/interpreter/parser.out
 quex_backend/interpreter/parsetab.py
 sk.txt
+.DS_Store

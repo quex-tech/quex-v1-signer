@@ -1,0 +1,41 @@
+[tool.mypy]
+python_version = "3.12"
+strict = true
+exclude = [
+    "quex_backend/td_quote\\.py$",
+    "quex_backend/interpreter/parsetab\\.py$",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "cbor2.*",
+    "ecdsa.*",
+    "flask.*",
+    "flask_limiter.*",
+    "werkzeug.*",
+    "ntplib.*",
+    "ply.*",
+    "pyquex_tdx.*",
+    "eth_abi.*",
+    "eth_account.*",
+    "eth_keys.*",
+    "eth_utils.*",
+    "Crypto.*",
+    "dotenv.*",
+]
+ignore_missing_imports = true
+implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = "quex_backend.td_quote"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "quex_backend.plutus.abi",
+    "quex_backend.ride.abi",
+    "quex_backend.utils",
+    "quex_backend.routes",
+]
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
