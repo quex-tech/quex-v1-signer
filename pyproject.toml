@@ -1,14 +1,6 @@
 [tool.mypy]
 python_version = "3.12"
-warn_unused_configs = true
-warn_return_any = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-no_implicit_optional = true
-no_implicit_reexport = true
-strict_equality = true
-disallow_any_generics = true
-disallow_untyped_defs = true
+strict = true
 exclude = [
     "quex_backend/td_quote\\.py$",
     "quex_backend/interpreter/parsetab\\.py$",
@@ -37,3 +29,13 @@ implicit_reexport = true
 [[tool.mypy.overrides]]
 module = "quex_backend.td_quote"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "quex_backend.plutus.abi",
+    "quex_backend.ride.abi",
+    "quex_backend.utils",
+    "quex_backend.routes",
+]
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
