@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Any, cast
 
-from flask import Flask, Response
+from flask import Flask
+from werkzeug.wrappers import Response
 from flask_limiter.util import get_remote_address
 from flask_limiter import Limiter
 from werkzeug.exceptions import HTTPException
@@ -61,14 +62,14 @@ def create_app() -> Flask:
 
     @app.errorhandler(HTTPException)
     def handle_exception(e: HTTPException) -> Response:
-        response = e.get_response()
-        response.data = json.dumps({  # type: ignore[attr-defined]
+        response = cast(Response, e.get_response())
+        response.data = json.dumps({
             "code": e.code,
             "title": e.name,
             "description": e.description,
         })
         response.content_type = "application/json"
-        return response  # type: ignore[return-value]
+        return response
 
     from . import routes
     app.register_blueprint(routes.bp)
