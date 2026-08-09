@@ -66,7 +66,7 @@ def get_timestamp() -> int:
         raise GetTimestampError from exc
 
 
-def process_json(input_json: dict[str, Any], json_query: str, schema: str, encode: Callable[[list[str], list[Any]], bytes]) -> bytes:
+def process_json(input_json: Any, json_query: str, schema: str, encode: Callable[[list[str], list[Any]], bytes]) -> bytes:
     """
     Execute JQ program over the input data and encode the result according to the schema provided.
     """
@@ -93,7 +93,7 @@ class SSLAdapter(HTTPAdapter):
         super().init_poolmanager(*args, **kwargs)
 
 
-def make_request(qrr: HTTPRequest, as_json: bool = True) -> Any:
+def make_request(qrr: HTTPRequest, as_json: bool = True, timeout: float | None = None) -> Any:
     try:
         url = qrr.build_url()
 
@@ -112,6 +112,7 @@ def make_request(qrr: HTTPRequest, as_json: bool = True) -> Any:
             data=qrr.get_body(),
             verify=True,
             allow_redirects=False,
+            timeout=timeout,
         )
     except (ConnectionError, Timeout) as exc:
         raise RequestConnectionError from exc

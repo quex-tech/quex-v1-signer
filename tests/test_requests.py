@@ -182,7 +182,8 @@ class TestRequests(unittest.TestCase):
                     headers={"Content-Type": "application/json"},
                     data=body_bytes,
                     verify=True,
-                    allow_redirects=False
+                    allow_redirects=False,
+                    timeout=None
                 )
 
     def test_correct_certificates(self):

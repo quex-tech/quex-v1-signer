@@ -1,10 +1,8 @@
-import ssl
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import astuple, dataclass
 from typing import Any, List
 
 import eth_abi
-import requests
 from eth_utils import keccak
 from requests.exceptions import RequestException
 
@@ -16,17 +14,7 @@ from quex_backend.models import (
     HTTPRequest,
     from_nested_tuple,
 )
-from quex_backend.interpreter import jq_eval, parser
-from quex_backend.utils import (
-    ABIEncodingError,
-    JQProcessingError,
-    RequestConnectionError,
-    Response4XXError,
-    Response5XXError,
-    ResponseNotJSONError,
-    ResponseNotSupportedResponseCodeError,
-    SSLAdapter,
-)
+from quex_backend.utils import RequestConnectionError, make_request
 
 # Shared wire constant: the same domain tag and tuple order are pinned by
 # tests/test_vectors/batch_action_test_vectors.json and must be reproduced by every
@@ -35,8 +23,8 @@ BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
 # Consensus-relevant: every TD must derive identical results for the same action id,
 # so these are code constants, never config.
 MAX_BATCH_SIZE = 8
-# Cap the total encrypted patch fields across the batch: each one costs a full ECDH scalar
-# multiplication with the TD long-term key, so an unbounded count is a CPU-exhaustion vector.
+# Each encrypted patch field costs an ECDH scalar multiplication with the TD long-term
+# key, so an unbounded count is a CPU-exhaustion vector.
 MAX_PATCH_FIELDS = 32
 # Per-socket connect/read timeout: it does NOT bound a source dripping bytes slowly.
 SOURCE_TIMEOUT_SECONDS = 3
@@ -71,9 +59,13 @@ class EthereumBatchHTTPAction(ABIEncodable):
                 f"patch count {len(self.patches)} does not match request count {len(self.requests)}"
             )
         for request in self.requests:
-            # A rooted relative path keeps urljoin from letting the path override the host or
-            # downgrade the scheme (e.g. an absolute http://169.254.169.254/... metadata URL).
-            if not request.path.startswith("/") or "://" in request.path:
+            # urljoin lets an absolute (scheme://) or protocol-relative (//host) path override
+            # the host or scheme (e.g. a cloud-metadata URL), so only a plain rooted path passes.
+            if (
+                not request.path.startswith("/")
+                or request.path.startswith("//")
+                or "://" in request.path
+            ):
                 raise BatchActionValidationError("request path must be a rooted relative path")
         total_patch_fields = sum(
             len(p.headers) + len(p.parameters) + bool(p.body) + bool(p.path_suffix)
@@ -143,66 +135,14 @@ def apply_batch_patches(
     ]
 
 
-# Mirror of utils.make_request with a per-socket timeout, fetching ONE source. The v1
-# code path must stay byte-for-byte untouched, so the timeout lives here instead of a
-# shared parameter.
 def make_source_request(qrr: HTTPRequest) -> Any:
     try:
-        url = qrr.build_url()
-
-        context = ssl.create_default_context()
-        context.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")
-        context.minimum_version = ssl.TLSVersion.TLSv1_2
-
-        session = requests.Session()
-        session.mount("https://", SSLAdapter(ssl_context=context))
-
-        r = session.request(
-            qrr.method.string_value(),
-            url,
-            params=qrr.get_parameters(),
-            headers=qrr.get_headers(),
-            data=qrr.get_body(),
-            verify=True,
-            allow_redirects=False,
-            timeout=SOURCE_TIMEOUT_SECONDS,
-        )
+        return make_request(qrr, timeout=SOURCE_TIMEOUT_SECONDS)
     except (RequestException, ValueError) as exc:
-        # Translate every requests-layer failure (incl. InvalidHeader/InvalidURL and plain
-        # ValueErrors from bad header bytes) so nothing escapes to the route catch-all where
-        # its text, possibly containing a decrypted secret, would be signed on-chain.
+        # Translate the failures make_request leaves raw (InvalidHeader/InvalidURL and plain
+        # ValueErrors from bad header bytes) so nothing escapes to a handler where its text,
+        # possibly containing a decrypted secret, would be signed on-chain.
         raise RequestConnectionError from exc
-
-    if 300 <= r.status_code < 400 or r.status_code >= 600:
-        raise ResponseNotSupportedResponseCodeError(r.status_code)
-    elif 400 <= r.status_code < 500:
-        raise Response4XXError(r.status_code)
-    elif 500 <= r.status_code < 600:
-        raise Response5XXError(r.status_code)
-
-    if r.status_code == 204:
-        return ""
-
-    try:
-        return r.json()
-    except Exception as exc:
-        raise ResponseNotJSONError from exc
-
-
-# EVM-only sibling of utils.process_json for a list-shaped jq input (the v1 signature
-# is annotated for a dict root and must stay untouched).
-def process_json_list(input_list: List[Any], json_query: str, schema: str) -> bytes:
-    try:
-        ast = parser.parse(json_query)
-        result = jq_eval(input_list, ast)
-    except Exception as exc:
-        raise JQProcessingError from exc
-
-    try:
-        encoded: bytes = eth_abi.encode([schema], [result])
-        return encoded
-    except Exception as exc:
-        raise ABIEncodingError from exc
 
 
 def fetch_all_sources(batch_requests: List[HTTPRequest]) -> List[Any]:
@@ -210,7 +150,7 @@ def fetch_all_sources(batch_requests: List[HTTPRequest]) -> List[Any]:
     # settle, so every TD reports the same error code regardless of source timing. A batch
     # missing the wall-clock deadline maps to RequestConnectionError; shutdown(wait=False)
     # returns the serving thread immediately and abandons any stuck fetch threads.
-    pool = ThreadPoolExecutor(max_workers=min(max(len(batch_requests), 1), MAX_BATCH_SIZE))
+    pool = ThreadPoolExecutor(max_workers=len(batch_requests) or 1)
     try:
         futures = [pool.submit(make_source_request, r) for r in batch_requests]
         _, pending = wait(futures, timeout=BATCH_DEADLINE_SECONDS)

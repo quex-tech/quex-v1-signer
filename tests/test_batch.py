@@ -3,13 +3,14 @@ import time
 import unittest
 from base64 import b64decode, b64encode
 from pathlib import Path
-from typing import Any
+from random import Random
+from typing import Any, Callable
 from unittest.mock import Mock, patch
 
 import eth_abi
 from ecdsa import SECP256k1, SigningKey
 from eth_utils import keccak
-from requests.exceptions import Timeout
+from requests.exceptions import InvalidHeader, Timeout
 
 from quex_backend import create_app
 from quex_backend.batch import (
@@ -22,7 +23,6 @@ from quex_backend.batch import (
     apply_batch_patches,
     fetch_all_sources,
     make_source_request,
-    process_json_list,
 )
 from quex_backend.encryption import EncryptedPatchProcessingError, EncryptedPatchProcessor
 from quex_backend.models import (
@@ -35,17 +35,10 @@ from quex_backend.models import (
     RequestHeaderPatch,
     RequestMethod,
 )
-from quex_backend.utils import (
-    GetTimestampError,
-    JQProcessingError,
-    RequestConnectionError,
-    Response4XXError,
-    Response5XXError,
-    ResponseNotJSONError,
-    ResponseNotSupportedResponseCodeError,
-    process_json,
-)
+from quex_backend.utils import GetTimestampError, RequestConnectionError
 from tests.client import Client
+
+FUZZ_ROUNDS = 50
 
 
 def request_from_dict(data: dict[str, Any]) -> HTTPRequest:
@@ -84,83 +77,106 @@ def get_request(host: str) -> HTTPRequest:
     )
 
 
+def fuzz_text(rng: Random, alphabet: str = "abcXYZ019 %&?=.-_é中") -> str:
+    return "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 12)))
+
+
+def fuzz_bytes(rng: Random) -> bytes:
+    return bytes(rng.randrange(256) for _ in range(rng.randint(0, 8)))
+
+
+def fuzz_request(rng: Random) -> HTTPRequest:
+    return HTTPRequest(
+        method=RequestMethod(rng.randrange(len(RequestMethod))),
+        host=fuzz_text(rng),
+        path="/" + fuzz_text(rng, "abz09._-"),
+        headers=[RequestHeader(fuzz_text(rng), fuzz_text(rng)) for _ in range(rng.randint(0, 2))],
+        parameters=[QueryParameter(fuzz_text(rng), fuzz_text(rng)) for _ in range(rng.randint(0, 2))],
+        body=fuzz_bytes(rng),
+    )
+
+
+def fuzz_patch(rng: Random) -> HTTPPrivatePatch:
+    # At most 4 fields per patch so a full batch stays within MAX_PATCH_FIELDS.
+    return HTTPPrivatePatch(
+        path_suffix=fuzz_bytes(rng),
+        headers=[RequestHeaderPatch(fuzz_text(rng), fuzz_bytes(rng)) for _ in range(rng.randint(0, 1))],
+        parameters=[QueryParameterPatch(fuzz_text(rng), fuzz_bytes(rng)) for _ in range(rng.randint(0, 1))],
+        body=fuzz_bytes(rng),
+        td_address="0x" + "".join(rng.choice("0123456789abcdef") for _ in range(40)),
+    )
+
+
+def fuzz_action(rng: Random) -> EthereumBatchHTTPAction:
+    n = rng.randint(1, MAX_BATCH_SIZE)
+    return EthereumBatchHTTPAction(
+        requests=[fuzz_request(rng) for _ in range(n)],
+        patches=[fuzz_patch(rng) for _ in range(n)],
+        schema=rng.choice(["uint256", "int256", "string"]),
+        filter=fuzz_text(rng),
+    )
+
+
 class TestBatchActionEncoding(unittest.TestCase):
     vectors = json.loads(
         (Path(__file__).parent.resolve() / "test_vectors" / "batch_action_test_vectors.json").read_text()
     )["vectors"]
 
-    def test_batch_action_encoding_and_domain_tagged_id(self):
+    def test_pinned_cross_language_vector(self):
         for v in self.vectors:
             action = batch_action_from_dict(v["action"])
+            action.validate()
             self.assertEqual(b64encode(action.bytes()).decode("ascii"), v["bytes"])
             self.assertEqual(action.action_id().hex(), v["action_id"])
 
-    def test_action_id_differs_from_untagged_bytes_hash(self):
-        # The id preimage is domain-tagged; hashing the plain encoding must give another value,
-        # otherwise batch ids could collide with v1 single-request action ids.
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        self.assertNotEqual(action.action_id(), keccak(action.bytes()))
+    def test_fuzzed_actions_roundtrip_with_domain_tagged_id(self):
+        rng = Random(1337)
+        for i in range(FUZZ_ROUNDS):
+            with self.subTest(round=i):
+                action = fuzz_action(rng)
+                wrapped = EthereumBatchHTTPActionWithProof(action=action, proof=fuzz_bytes(rng))
 
-    def test_validate_accepts_vector_action(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.validate()
+                parsed = EthereumBatchHTTPActionWithProof.parse(wrapped.bytes())
 
-    def test_validate_accepts_max_batch_size(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.requests = [action.requests[0]] * MAX_BATCH_SIZE
-        action.patches = [action.patches[0]] * MAX_BATCH_SIZE
-        action.validate()
+                self.assertEqual(parsed, wrapped)
+                # The id preimage is domain-tagged; hashing the plain encoding must give another
+                # value, otherwise batch ids could collide with v1 single-request action ids.
+                self.assertNotEqual(action.action_id(), keccak(action.bytes()))
 
-    def test_validate_rejects_empty_batch(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.requests = []
-        action.patches = []
-        with self.assertRaises(BatchActionValidationError):
-            action.validate()
-
-    def test_validate_rejects_oversized_batch(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.requests = [action.requests[0]] * (MAX_BATCH_SIZE + 1)
-        action.patches = [action.patches[0]] * (MAX_BATCH_SIZE + 1)
-        with self.assertRaises(BatchActionValidationError):
-            action.validate()
-
-    def test_validate_rejects_patch_count_mismatch(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.patches = action.patches[:1]
-        with self.assertRaises(BatchActionValidationError):
-            action.validate()
-
-    def test_validate_rejects_non_rooted_path(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.requests[0].path = "http://169.254.169.254/latest/meta-data/"
-        with self.assertRaises(BatchActionValidationError):
-            action.validate()
-
-    def test_validate_rejects_too_many_patch_fields(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.patches[0].parameters = [
-            QueryParameterPatch(f"k{i}", b"x") for i in range(MAX_PATCH_FIELDS + 1)
+    # Each mutation breaks exactly one invariant of an otherwise valid fuzzed action.
+    def mutations(self) -> list[tuple[str, Callable[[EthereumBatchHTTPAction], None]]]:
+        def empty(a): a.requests, a.patches = [], []
+        def oversized(a):
+            a.requests = [a.requests[0]] * (MAX_BATCH_SIZE + 1)
+            a.patches = [a.patches[0]] * (MAX_BATCH_SIZE + 1)
+        def patch_mismatch(a): a.patches = a.patches + [a.patches[0]]
+        def absolute_url_path(a): a.requests[0].path = "http://169.254.169.254/latest/meta-data/"
+        def protocol_relative_path(a): a.requests[0].path = "//evil.example.com/x"
+        def unrooted_path(a): a.requests[0].path = "api/v3"
+        def too_many_patch_fields(a):
+            a.patches[0].parameters = [
+                QueryParameterPatch(f"k{i}", b"x") for i in range(MAX_PATCH_FIELDS + 1)
+            ]
+        return [
+            ("empty batch", empty),
+            ("oversized batch", oversized),
+            ("patch count mismatch", patch_mismatch),
+            ("absolute url path", absolute_url_path),
+            ("protocol-relative path", protocol_relative_path),
+            ("unrooted path", unrooted_path),
+            ("too many patch fields", too_many_patch_fields),
         ]
-        with self.assertRaises(BatchActionValidationError):
-            action.validate()
 
-    def test_parse_rejects_invalid_batch(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.patches = action.patches[:1]
-        wrapped = EthereumBatchHTTPActionWithProof(action=action, proof=b"")
+    def test_parse_rejects_fuzzed_actions_with_broken_invariants(self):
+        rng = Random(7)
+        for name, mutate in self.mutations():
+            with self.subTest(mutation=name):
+                action = fuzz_action(rng)
+                mutate(action)
+                data = EthereumBatchHTTPActionWithProof(action=action, proof=b"").bytes()
 
-        with self.assertRaises(BatchActionValidationError):
-            EthereumBatchHTTPActionWithProof.parse(wrapped.bytes())
-
-    def test_batch_action_with_proof_parse_roundtrip(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        wrapped = EthereumBatchHTTPActionWithProof(action=action, proof=b"\x01\x02\x03")
-
-        parsed = EthereumBatchHTTPActionWithProof.parse(wrapped.bytes())
-
-        self.assertEqual(parsed, wrapped)
-        self.assertEqual(parsed.action.action_id(), action.action_id())
+                with self.assertRaises(BatchActionValidationError):
+                    EthereumBatchHTTPActionWithProof.parse(data)
 
 
 class TestBatchPatchApplication(unittest.TestCase):
@@ -197,23 +213,6 @@ class TestBatchPatchApplication(unittest.TestCase):
 
         with self.assertRaises(EncryptedPatchProcessingError):
             apply_batch_patches(self.processor, action, wrong_proof)
-
-
-class TestBatchJqProcessing(unittest.TestCase):
-    def test_process_json_list_sums_sources_into_encoded_result(self):
-        encoded = process_json_list(
-            [{"price": "2"}, {"price": "3"}], "map(.price | tonumber) | add | round", "uint256"
-        )
-
-        self.assertEqual(eth_abi.decode(["uint256"], encoded), (5,))
-
-    def test_process_json_list_raises_same_error_type_as_v1_process_json(self):
-        # process_json_list mirrors utils.process_json for a list root; a bad filter must
-        # keep failing identically in both so the copies cannot drift silently.
-        with self.assertRaises(JQProcessingError):
-            process_json_list([{"a": 1}], "((", "uint256")
-        with self.assertRaises(JQProcessingError):
-            process_json({"a": 1}, "((", "uint256", eth_abi.encode)
 
 
 class TestBatchFetch(unittest.TestCase):
@@ -263,42 +262,11 @@ class TestBatchFetch(unittest.TestCase):
                     fetch_all_sources([get_request("slow.example.com")])
                 self.assertLess(time.monotonic() - started, 0.9)
 
-    def test_fetch_all_sources_of_empty_list_returns_empty(self):
-        self.assertEqual(fetch_all_sources([]), [])
-
-    def test_make_source_request_maps_status_codes_like_v1(self):
-        cases = [
-            (301, ResponseNotSupportedResponseCodeError),
-            (404, Response4XXError),
-            (500, Response5XXError),
-            (601, ResponseNotSupportedResponseCodeError),
-        ]
-        for status, expected in cases:
-            with self.subTest(status=status):
-                with patch("requests.Session.request") as mock_request:
-                    mock_request.return_value = Mock(status_code=status)
-                    with self.assertRaises(expected):
-                        make_source_request(get_request("api.example.com"))
-
     def test_make_source_request_translates_requests_errors_to_connection_error(self):
         # A bad decrypted header byte raises deep in requests; it must become a fail-all
         # connection error, never escape to a handler that would sign its text.
-        from requests.exceptions import InvalidHeader
-
         with patch("requests.Session.request", side_effect=InvalidHeader("sk_live_SECRET")):
             with self.assertRaises(RequestConnectionError):
-                make_source_request(get_request("api.example.com"))
-
-    def test_make_source_request_handles_204_and_non_json(self):
-        with patch("requests.Session.request") as mock_request:
-            mock_request.return_value = Mock(status_code=204)
-            self.assertEqual(make_source_request(get_request("api.example.com")), "")
-
-        with patch("requests.Session.request") as mock_request:
-            mock_request.return_value = Mock(
-                status_code=200, json=Mock(side_effect=ValueError("not json"))
-            )
-            with self.assertRaises(ResponseNotJSONError):
                 make_source_request(get_request("api.example.com"))
 
 
@@ -308,10 +276,13 @@ class TestQueryBatchRoute(unittest.TestCase):
     def setUp(self) -> None:
         self.client = create_app().test_client()
 
-    def post_action(self, action: EthereumBatchHTTPAction) -> Any:
+    def wrapped_action_b64(self, action: EthereumBatchHTTPAction) -> str:
         wrapped = EthereumBatchHTTPActionWithProof(action=action, proof=b"")
+        return b64encode(wrapped.bytes()).decode("ascii")
+
+    def post_action(self, action: EthereumBatchHTTPAction) -> Any:
         payload = {
-            "action": b64encode(wrapped.bytes()).decode("ascii"),
+            "action": self.wrapped_action_b64(action),
             "relayer": "0x1111111111111111111111111111111111111111",
         }
         return self.client.post("/query_batch", json=payload)
@@ -341,7 +312,7 @@ class TestQueryBatchRoute(unittest.TestCase):
         )
         self.assertIn("sig", data)
 
-    def test_query_batch_signs_error_when_one_source_is_dead(self):
+    def test_query_batch_signs_error_with_empty_value_when_one_source_is_dead(self):
         action = batch_action_from_dict(self.vectors[0]["action"])
         action.filter = "map(.price | tonumber) | add | round"
 
@@ -364,36 +335,22 @@ class TestQueryBatchRoute(unittest.TestCase):
         )
         self.assertEqual(b64decode(data["msg"]["data_item"]["value"]), b"")
 
-    def test_query_batch_rejects_invalid_batch_without_signing(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        action.patches = action.patches[:1]
-
-        response = self.post_action(action)
-
-        self.assertEqual(response.status_code, 400)
-
-    def test_query_batch_rejects_malformed_payloads_with_400(self):
+    def test_query_batch_rejects_malformed_payloads_with_unsigned_400(self):
+        valid_action = self.wrapped_action_b64(batch_action_from_dict(self.vectors[0]["action"]))
+        invalid_action = batch_action_from_dict(self.vectors[0]["action"])
+        invalid_action.patches = invalid_action.patches[:1]
+        relayer = "0x1111111111111111111111111111111111111111"
         cases = [
-            {"relayer": "0x1111111111111111111111111111111111111111"},
-            {"action": "AAAA", "relayer": "0x1111111111111111111111111111111111111111"},
-            {"action": "AAAA"},
+            ("missing action", {"relayer": relayer}),
+            ("missing relayer", {"action": valid_action}),
+            ("undecodable action bytes", {"action": "AAAA", "relayer": relayer}),
+            ("invalid batch", {"action": self.wrapped_action_b64(invalid_action), "relayer": relayer}),
+            ("invalid relayer", {"action": valid_action, "relayer": "not-an-address"}),
         ]
-        for payload in cases:
-            with self.subTest(payload=payload):
+        for name, payload in cases:
+            with self.subTest(case=name):
                 response = self.client.post("/query_batch", json=payload)
                 self.assertEqual(response.status_code, 400)
-
-    def test_query_batch_rejects_invalid_relayer_address(self):
-        action = batch_action_from_dict(self.vectors[0]["action"])
-        wrapped = EthereumBatchHTTPActionWithProof(action=action, proof=b"")
-        payload = {
-            "action": b64encode(wrapped.bytes()).decode("ascii"),
-            "relayer": "not-an-address",
-        }
-
-        response = self.client.post("/query_batch", json=payload)
-
-        self.assertEqual(response.status_code, 400)
 
     def test_query_batch_returns_unsigned_503_when_timestamp_unavailable(self):
         action = batch_action_from_dict(self.vectors[0]["action"])

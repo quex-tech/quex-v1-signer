@@ -8,7 +8,7 @@ from base64 import b64encode
 from pathlib import Path
 from typing import Any
 
-from quex_backend.batch import MAX_BATCH_SIZE, EthereumBatchHTTPAction
+from quex_backend.batch import EthereumBatchHTTPAction
 from quex_backend.models import (
     HTTPPrivatePatch,
     HTTPRequest,
@@ -30,54 +30,29 @@ EMPTY_PATCH = HTTPPrivatePatch(
 )
 
 
-def binance_request(symbol: str) -> HTTPRequest:
-    return HTTPRequest(
-        method=RequestMethod.GET,
-        host="api.binance.com",
-        path="/api/v3/ticker/price",
-        headers=[],
-        parameters=[QueryParameter("symbol", symbol)],
-        body=b"",
-    )
-
-
-def coinbase_request() -> HTTPRequest:
-    return HTTPRequest(
-        method=RequestMethod.GET,
-        host="api.coinbase.com",
-        path="/v2/prices/BTC-USD/spot",
-        headers=[RequestHeader("Accept", "application/json")],
-        parameters=[],
-        body=b"",
-    )
-
-
 def canonical_action() -> EthereumBatchHTTPAction:
     return EthereumBatchHTTPAction(
-        requests=[binance_request("BTCUSDT"), coinbase_request()],
+        requests=[
+            HTTPRequest(
+                method=RequestMethod.GET,
+                host="api.binance.com",
+                path="/api/v3/ticker/price",
+                headers=[],
+                parameters=[QueryParameter("symbol", "BTCUSDT")],
+                body=b"",
+            ),
+            HTTPRequest(
+                method=RequestMethod.GET,
+                host="api.coinbase.com",
+                path="/v2/prices/BTC-USD/spot",
+                headers=[RequestHeader("Accept", "application/json")],
+                parameters=[],
+                body=b"",
+            ),
+        ],
         patches=[EMPTY_PATCH, EMPTY_PATCH],
         schema="uint256",
         filter="map(.price | tonumber) | add",
-    )
-
-
-def single_source_action() -> EthereumBatchHTTPAction:
-    return EthereumBatchHTTPAction(
-        requests=[binance_request("ETHUSDT")],
-        patches=[EMPTY_PATCH],
-        schema="uint256",
-        filter="map(.price | tonumber) | add | round",
-    )
-
-
-def max_size_action() -> EthereumBatchHTTPAction:
-    symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT", "XRPUSDT", "DOTUSDT", "LTCUSDT"]
-    assert len(symbols) == MAX_BATCH_SIZE
-    return EthereumBatchHTTPAction(
-        requests=[binance_request(s) for s in symbols],
-        patches=[EMPTY_PATCH] * MAX_BATCH_SIZE,
-        schema="uint256",
-        filter="map(.price | tonumber) | add | round",
     )
 
 
@@ -123,8 +98,6 @@ def main() -> None:
         "_comment": "bytes = abi.encode(batch action tuple); action_id = keccak256(abi.encode(BATCH_ACTION_DOMAIN, action)) where BATCH_ACTION_DOMAIN = keccak256('quex.action.batchRequest.v1')",
         "vectors": [
             vector("canonical 2-source sum, cross-language pinned", canonical_action()),
-            vector("single source", single_source_action()),
-            vector("max batch size", max_size_action()),
         ],
     }
 

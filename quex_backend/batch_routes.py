@@ -2,6 +2,7 @@ import re
 from base64 import b64decode
 from typing import Any
 
+from eth_abi import encode as eth_abi_encode
 from eth_abi.exceptions import DecodingError
 from flask import Blueprint, request
 from werkzeug.exceptions import BadRequest, ServiceUnavailable
@@ -12,7 +13,6 @@ from quex_backend.batch import (
     EthereumBatchHTTPActionWithProof,
     apply_batch_patches,
     fetch_all_sources,
-    process_json_list,
 )
 from quex_backend.encryption import EncryptedPatchProcessingError
 from quex_backend.models import (
@@ -33,9 +33,22 @@ from quex_backend.utils import (
     ResponseNotJSONError,
     ResponseNotSupportedResponseCodeError,
     get_timestamp,
+    process_json,
 )
 
 bp = Blueprint("v1_batch", __name__)
+
+ERROR_CODES = [
+    (EncryptedPatchProcessingError, QuexErrorCodes.PATCH_PROCESSING_ERROR),
+    (RequestConnectionError, QuexErrorCodes.REQUEST_CONNECTION_ERROR),
+    (ResponseNotSupportedResponseCodeError, QuexErrorCodes.RESPONSE_NOT_SUPPORTED_RESPONSE_CODE_ERROR),
+    (Response4XXError, QuexErrorCodes.RESPONSE_4XX_ERROR),
+    (Response5XXError, QuexErrorCodes.RESPONSE_5XX_ERROR),
+    (ResponseNotJSONError, QuexErrorCodes.RESPONSE_NOT_JSON_ERROR),
+    (JQProcessingError, QuexErrorCodes.JQ_PROCESSING_ERROR),
+    (ABIEncodingError, QuexErrorCodes.ABI_ENCODING_ERROR),
+    (RequestProcessingError, QuexErrorCodes.INTERNAL_REQUEST_PROCESSING_ERROR),
+]
 
 
 # EVM-only batch endpoint. Any single source failure fails the whole action (fail-all):
@@ -51,41 +64,22 @@ def query_batch() -> dict[str, Any]:
         if not re.fullmatch(r"0x[0-9a-fA-F]{40}", relayer):
             raise BadRequest("relayer must be a 0x-prefixed 20-byte hex address")
         qr = EthereumBatchHTTPActionWithProof.parse(action_bytes)
-    except BadRequest:
-        raise
     except (KeyError, TypeError, ValueError, DecodingError, BatchActionValidationError) as exc:
         raise BadRequest(str(exc)) from exc
 
-    def execute_action() -> tuple[QuexErrorCodes, bytes]:
-        try:
-            patched_requests = apply_batch_patches(patch_processor, qr.action, qr.proof)
-            results = fetch_all_sources(patched_requests)
-            processed_response = process_json_list(results, qr.action.filter, qr.action.schema)
-            return QuexErrorCodes.SUCCESS, processed_response
-        except EncryptedPatchProcessingError:
-            return QuexErrorCodes.PATCH_PROCESSING_ERROR, b""
-        except RequestConnectionError:
-            return QuexErrorCodes.REQUEST_CONNECTION_ERROR, b""
-        except ResponseNotSupportedResponseCodeError:
-            return QuexErrorCodes.RESPONSE_NOT_SUPPORTED_RESPONSE_CODE_ERROR, b""
-        except Response4XXError:
-            return QuexErrorCodes.RESPONSE_4XX_ERROR, b""
-        except Response5XXError:
-            return QuexErrorCodes.RESPONSE_5XX_ERROR, b""
-        except ResponseNotJSONError:
-            return QuexErrorCodes.RESPONSE_NOT_JSON_ERROR, b""
-        except JQProcessingError:
-            return QuexErrorCodes.JQ_PROCESSING_ERROR, b""
-        except ABIEncodingError:
-            return QuexErrorCodes.ABI_ENCODING_ERROR, b""
-        except RequestProcessingError:
-            # Never sign exception text: it can carry a decrypted patch secret or
-            # attacker-chosen bytes from a source. Detail is logged locally, not on-chain.
-            return QuexErrorCodes.INTERNAL_REQUEST_PROCESSING_ERROR, b""
-        except Exception:
-            return QuexErrorCodes.INTERNAL_OTHER_ERROR, b""
-
-    status_code, value = execute_action()
+    try:
+        patched_requests = apply_batch_patches(patch_processor, qr.action, qr.proof)
+        results = fetch_all_sources(patched_requests)
+        value = process_json(results, qr.action.filter, qr.action.schema, eth_abi_encode)
+        status_code = QuexErrorCodes.SUCCESS
+    except Exception as exc:
+        # Never sign exception text: it can carry a decrypted patch secret or attacker-chosen
+        # bytes from a source. The signed value stays empty on every error path.
+        status_code = next(
+            (code for exc_type, code in ERROR_CODES if isinstance(exc, exc_type)),
+            QuexErrorCodes.INTERNAL_OTHER_ERROR,
+        )
+        value = b""
 
     # Signing must be infallible once the action ran; without a trusted timestamp there is
     # nothing safe to sign, so an NTP outage yields an unsigned 503 and the relayer retries.
