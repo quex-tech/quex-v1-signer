@@ -12,6 +12,11 @@ from quex_backend.models import (
 )
 
 BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
+MAX_BATCH_SIZE = 8
+
+
+class BatchActionValidationError(Exception):
+    pass
 
 
 # Batch of parallel HTTP requests processed as one action: the JSON results are collected
@@ -26,6 +31,16 @@ class EthereumBatchHTTPAction(ABIEncodable):
     @staticmethod
     def obj_schema() -> str:
         return f"({HTTPRequest.obj_schema()}[],{HTTPPrivatePatch.obj_schema()}[],string,string)"
+
+    def validate(self) -> None:
+        if not 1 <= len(self.requests) <= MAX_BATCH_SIZE:
+            raise BatchActionValidationError(
+                f"batch must contain 1..{MAX_BATCH_SIZE} requests, got {len(self.requests)}"
+            )
+        if len(self.patches) != len(self.requests):
+            raise BatchActionValidationError(
+                f"patch count {len(self.patches)} does not match request count {len(self.requests)}"
+            )
 
     def action_id(self) -> bytes:
         # Domain-tagged so batch ids can never collide with single-request v1 action ids.

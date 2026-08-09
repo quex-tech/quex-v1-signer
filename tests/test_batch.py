@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from quex_backend.batch import (
+    MAX_BATCH_SIZE,
+    BatchActionValidationError,
     EthereumBatchHTTPAction,
     EthereumBatchHTTPActionWithProof,
 )
@@ -59,6 +61,30 @@ class TestBatchActionEncoding(unittest.TestCase):
             action = batch_action_from_dict(v["action"])
             self.assertEqual(b64encode(action.bytes()).decode("ascii"), v["bytes"])
             self.assertEqual("0x" + action.action_id().hex(), v["action_id"])
+
+    def test_validate_accepts_vector_action(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.validate()
+
+    def test_validate_rejects_empty_batch(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.requests = []
+        action.patches = []
+        with self.assertRaises(BatchActionValidationError):
+            action.validate()
+
+    def test_validate_rejects_oversized_batch(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.requests = [action.requests[0]] * (MAX_BATCH_SIZE + 1)
+        action.patches = [action.patches[0]] * (MAX_BATCH_SIZE + 1)
+        with self.assertRaises(BatchActionValidationError):
+            action.validate()
+
+    def test_validate_rejects_patch_count_mismatch(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.patches = action.patches[:1]
+        with self.assertRaises(BatchActionValidationError):
+            action.validate()
 
     def test_batch_action_with_proof_parse_roundtrip(self):
         action = batch_action_from_dict(self.vectors[0]["action"])
