@@ -25,6 +25,7 @@ from quex_backend.models import (
     QueryParameterPatch,
     RequestHeader,
     RequestHeaderPatch,
+    QuexErrorCodes,
     RequestMethod,
 )
 from quex_backend.utils import RequestConnectionError
@@ -150,6 +151,38 @@ class TestQueryBatchRoute(unittest.TestCase):
             eth_abi.decode(["uint256"], b64decode(data["msg"]["data_item"]["value"])), (5,)
         )
         self.assertIn("sig", data)
+
+
+    def test_query_batch_signs_error_when_one_source_is_dead(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.filter = "map(.price | tonumber) | add | round"
+
+        with patch("quex_backend.batch_routes.get_timestamp", return_value=1700000000):
+            with patch("requests.Session.request") as mock_request:
+
+                def respond(method: str, url: str, **kwargs: Any) -> Mock:
+                    if "binance" in url:
+                        return Mock(status_code=200, json=lambda: {"price": "2"})
+                    raise Timeout()
+
+                mock_request.side_effect = respond
+
+                response = self.post_action(action)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(
+            data["msg"]["data_item"]["error"], QuexErrorCodes.REQUEST_CONNECTION_ERROR.value
+        )
+        self.assertEqual(b64decode(data["msg"]["data_item"]["value"]), b"")
+
+    def test_query_batch_rejects_invalid_batch_without_signing(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.patches = action.patches[:1]
+
+        response = self.post_action(action)
+
+        self.assertEqual(response.status_code, 400)
 
 
 def get_request(host: str) -> HTTPRequest:
