@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 
+import eth_abi
 from requests.exceptions import Timeout
 
 from quex_backend.batch import (
@@ -15,6 +16,7 @@ from quex_backend.batch import (
     EthereumBatchHTTPActionWithProof,
     apply_batch_patches,
     fetch_all,
+    process_json_list,
 )
 from quex_backend.models import (
     HTTPPrivatePatch,
@@ -131,6 +133,15 @@ class TestBatchPatchApplication(unittest.TestCase):
         self.assertEqual(len(patched), 2)
         self.assertEqual(patched[0].headers, action.requests[0].headers)
         self.assertIn(RequestHeader("X-Api-Key", "secret"), patched[1].headers)
+
+
+class TestBatchJqProcessing(unittest.TestCase):
+    def test_process_json_list_sums_sources_into_encoded_result(self):
+        encoded = process_json_list(
+            [{"price": "2"}, {"price": "3"}], "map(.price | tonumber) | add | round", "uint256"
+        )
+
+        self.assertEqual(eth_abi.decode(["uint256"], encoded), (5,))
 
 
 class TestBatchFetch(unittest.TestCase):

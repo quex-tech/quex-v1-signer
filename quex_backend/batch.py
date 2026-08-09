@@ -16,7 +16,10 @@ from quex_backend.models import (
     HTTPRequest,
     from_nested_tuple,
 )
+from quex_backend.interpreter import jq_eval, parser
 from quex_backend.utils import (
+    ABIEncodingError,
+    JQProcessingError,
     RequestConnectionError,
     Response4XXError,
     Response5XXError,
@@ -151,6 +154,22 @@ def make_batch_request(qrr: HTTPRequest) -> Any:
         return r.json()
     except Exception as exc:
         raise ResponseNotJSONError from exc
+
+
+# EVM-only sibling of utils.process_json for a list-shaped jq input (the v1 signature
+# is annotated for a dict root and must stay untouched).
+def process_json_list(input_list: List[Any], json_query: str, schema: str) -> bytes:
+    try:
+        ast = parser.parse(json_query)
+        result = jq_eval(input_list, ast)
+    except Exception as exc:
+        raise JQProcessingError from exc
+
+    try:
+        encoded: bytes = eth_abi.encode([schema], [result])
+        return encoded
+    except Exception as exc:
+        raise ABIEncodingError from exc
 
 
 def fetch_all(batch_requests: List[HTTPRequest]) -> List[Any]:
