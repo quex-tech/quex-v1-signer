@@ -1,5 +1,5 @@
 import ssl
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import astuple, dataclass
 from typing import Any, List
 
@@ -28,9 +28,17 @@ from quex_backend.utils import (
     SSLAdapter,
 )
 
+# Shared wire constant: the same domain tag and tuple order are pinned by
+# tests/test_vectors/batch_action_test_vectors.json and must be reproduced by every
+# other component computing batch action ids (client tooling, future contracts).
 BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
+# Consensus-relevant: every TD must derive identical results for the same action id,
+# so these are code constants, never config.
 MAX_BATCH_SIZE = 8
+# Per-socket connect/read timeout: it does NOT bound a source dripping bytes slowly.
 SOURCE_TIMEOUT_SECONDS = 3
+# Wall-clock bound for the whole batch, covering slow-drip sources the socket timeout misses.
+BATCH_DEADLINE_SECONDS = 10
 
 
 class BatchActionValidationError(Exception):
@@ -60,11 +68,13 @@ class EthereumBatchHTTPAction(ABIEncodable):
                 f"patch count {len(self.patches)} does not match request count {len(self.requests)}"
             )
 
+    def id_preimage(self) -> bytes:
+        # Domain-tagged so batch ids can never collide with single-request v1 action ids
+        # (whose preimage is the untagged bytes()). This is the canonical hashing preimage.
+        return eth_abi.encode(["bytes32", self.obj_schema()], [BATCH_ACTION_DOMAIN, astuple(self)])
+
     def action_id(self) -> bytes:
-        # Domain-tagged so batch ids can never collide with single-request v1 action ids.
-        return keccak(
-            eth_abi.encode(["bytes32", self.obj_schema()], [BATCH_ACTION_DOMAIN, astuple(self)])
-        )
+        return keccak(self.id_preimage())
 
 
 @dataclass
@@ -82,6 +92,9 @@ class EthereumBatchHTTPActionWithProof(ABIEncodable):
         result: EthereumBatchHTTPActionWithProof = from_nested_tuple(
             data_tuple, EthereumBatchHTTPActionWithProof
         )
+        # Validate at the decode boundary: an invalid batch action is unconstructible
+        # from bytes, so every consumer of parse() inherits the size invariants.
+        result.action.validate()
         return result
 
 
@@ -89,7 +102,7 @@ class EthereumBatchHTTPActionWithProof(ABIEncodable):
 # which binds the decryption proof to the id of the WHOLE batch action.
 @dataclass
 class _BatchPairAction(HTTPAction):
-    batch_action_id: bytes = b""
+    batch_action_id: bytes
 
     def action_id(self) -> bytes:
         return self.batch_action_id
@@ -114,9 +127,10 @@ def apply_batch_patches(
     ]
 
 
-# Mirror of utils.make_request with a per-source timeout. The v1 code path must stay
-# byte-for-byte untouched, so the timeout lives here instead of a shared parameter.
-def make_batch_request(qrr: HTTPRequest) -> Any:
+# Mirror of utils.make_request with a per-socket timeout, fetching ONE source. The v1
+# code path must stay byte-for-byte untouched, so the timeout lives here instead of a
+# shared parameter.
+def make_source_request(qrr: HTTPRequest) -> Any:
     try:
         url = qrr.build_url()
 
@@ -172,9 +186,17 @@ def process_json_list(input_list: List[Any], json_query: str, schema: str) -> by
         raise ABIEncodingError from exc
 
 
-def fetch_all(batch_requests: List[HTTPRequest]) -> List[Any]:
-    # Fail-all: the first raising future propagates; the with-block still joins the rest,
-    # each bounded by its own per-source timeout.
-    with ThreadPoolExecutor(max_workers=len(batch_requests)) as pool:
-        futures = [pool.submit(make_batch_request, r) for r in batch_requests]
+def fetch_all_sources(batch_requests: List[HTTPRequest]) -> List[Any]:
+    # Fail-all, deterministically: results are collected in request order after ALL futures
+    # settle, so every TD reports the same error code regardless of source timing. A batch
+    # missing the wall-clock deadline maps to RequestConnectionError; shutdown(wait=False)
+    # returns the serving thread immediately and abandons any stuck fetch threads.
+    pool = ThreadPoolExecutor(max_workers=min(max(len(batch_requests), 1), MAX_BATCH_SIZE))
+    try:
+        futures = [pool.submit(make_source_request, r) for r in batch_requests]
+        _, pending = wait(futures, timeout=BATCH_DEADLINE_SECONDS)
+        if pending:
+            raise RequestConnectionError
         return [f.result() for f in futures]
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)

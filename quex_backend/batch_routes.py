@@ -1,15 +1,17 @@
+import re
 from base64 import b64decode
 from typing import Any
 
+from eth_abi.exceptions import DecodingError
 from flask import Blueprint, request
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, ServiceUnavailable
 
 from quex_backend import account, patch_processor
 from quex_backend.batch import (
     BatchActionValidationError,
     EthereumBatchHTTPActionWithProof,
     apply_batch_patches,
-    fetch_all,
+    fetch_all_sources,
     process_json_list,
 )
 from quex_backend.encryption import EncryptedPatchProcessingError
@@ -40,54 +42,60 @@ bp = Blueprint("v1_batch", __name__)
 # the signed DataItem carries the error code and an empty value.
 @bp.route("/query_batch", methods=["POST"])
 def query_batch() -> dict[str, Any]:
-    payload = request.get_json()
-    action_bytes = b64decode(payload["action"])
-    relayer = payload["relayer"]
-
-    qr = EthereumBatchHTTPActionWithProof.parse(action_bytes)
+    # A malformed request must not yield a signed message binding its action id, so the
+    # whole decode boundary maps to an unsigned 400.
     try:
-        qr.action.validate()
-    except BatchActionValidationError as exc:
-        # A malformed action must not yield a signed message binding its id.
+        payload = request.get_json()
+        action_bytes = b64decode(payload["action"])
+        relayer = payload["relayer"]
+        if not re.fullmatch(r"0x[0-9a-fA-F]{40}", relayer):
+            raise BadRequest("relayer must be a 0x-prefixed 20-byte hex address")
+        qr = EthereumBatchHTTPActionWithProof.parse(action_bytes)
+    except BadRequest:
+        raise
+    except (KeyError, TypeError, ValueError, DecodingError, BatchActionValidationError) as exc:
         raise BadRequest(str(exc)) from exc
 
-    def create_response(status_code: QuexErrorCodes, response: bytes = b"") -> dict[str, Any]:
-        msg = EthereumOracleMessage(
-            data_item=DataItem(
-                timestamp=get_timestamp(),
-                error=status_code.value,
-                value=response,
-            ),
-            action_id=qr.action.action_id(),
-            relayer=relayer,
-        )
-        sig = msg.sign_with_account(account)
-        return b64dict(OracleResponse(msg=msg, sig=sig))
+    def execute_action() -> tuple[QuexErrorCodes, bytes]:
+        try:
+            patched_requests = apply_batch_patches(patch_processor, qr.action, qr.proof)
+            results = fetch_all_sources(patched_requests)
+            processed_response = process_json_list(results, qr.action.filter, qr.action.schema)
+            return QuexErrorCodes.SUCCESS, processed_response
+        except EncryptedPatchProcessingError:
+            return QuexErrorCodes.PATCH_PROCESSING_ERROR, b""
+        except RequestConnectionError:
+            return QuexErrorCodes.REQUEST_CONNECTION_ERROR, b""
+        except ResponseNotSupportedResponseCodeError:
+            return QuexErrorCodes.RESPONSE_NOT_SUPPORTED_RESPONSE_CODE_ERROR, b""
+        except Response4XXError:
+            return QuexErrorCodes.RESPONSE_4XX_ERROR, b""
+        except Response5XXError:
+            return QuexErrorCodes.RESPONSE_5XX_ERROR, b""
+        except ResponseNotJSONError:
+            return QuexErrorCodes.RESPONSE_NOT_JSON_ERROR, b""
+        except JQProcessingError:
+            return QuexErrorCodes.JQ_PROCESSING_ERROR, b""
+        except ABIEncodingError:
+            return QuexErrorCodes.ABI_ENCODING_ERROR, b""
+        except RequestProcessingError as exc:
+            return QuexErrorCodes.INTERNAL_REQUEST_PROCESSING_ERROR, str(exc).encode()
+        except Exception as exc:
+            return QuexErrorCodes.INTERNAL_OTHER_ERROR, str(exc).encode()
 
+    status_code, value = execute_action()
+
+    # Signing must be infallible once the action ran; without a trusted timestamp there is
+    # nothing safe to sign, so an NTP outage yields an unsigned 503 and the relayer retries.
     try:
-        patched_requests = apply_batch_patches(patch_processor, qr.action, qr.proof)
-        results = fetch_all(patched_requests)
-        processed_response = process_json_list(results, qr.action.filter, qr.action.schema)
-        return create_response(QuexErrorCodes.SUCCESS, processed_response)
-    except EncryptedPatchProcessingError:
-        return create_response(QuexErrorCodes.PATCH_PROCESSING_ERROR)
-    except RequestConnectionError:
-        return create_response(QuexErrorCodes.REQUEST_CONNECTION_ERROR)
-    except ResponseNotSupportedResponseCodeError:
-        return create_response(QuexErrorCodes.RESPONSE_NOT_SUPPORTED_RESPONSE_CODE_ERROR)
-    except Response4XXError:
-        return create_response(QuexErrorCodes.RESPONSE_4XX_ERROR)
-    except Response5XXError:
-        return create_response(QuexErrorCodes.RESPONSE_5XX_ERROR)
-    except ResponseNotJSONError:
-        return create_response(QuexErrorCodes.RESPONSE_NOT_JSON_ERROR)
-    except JQProcessingError:
-        return create_response(QuexErrorCodes.JQ_PROCESSING_ERROR)
-    except ABIEncodingError:
-        return create_response(QuexErrorCodes.ABI_ENCODING_ERROR)
-    except GetTimestampError:
-        return create_response(QuexErrorCodes.INTERNAL_GET_TIMESTAMP_ERROR)
-    except RequestProcessingError as exc:
-        return create_response(QuexErrorCodes.INTERNAL_REQUEST_PROCESSING_ERROR, str(exc).encode())
-    except Exception as exc:
-        return create_response(QuexErrorCodes.INTERNAL_OTHER_ERROR, str(exc).encode())
+        timestamp = get_timestamp()
+    except GetTimestampError as exc:
+        raise ServiceUnavailable("timestamp source unavailable") from exc
+
+    msg = EthereumOracleMessage(
+        data_item=DataItem(timestamp=timestamp, error=status_code.value, value=value),
+        action_id=qr.action.action_id(),
+        relayer=relayer,
+    )
+    sig = msg.sign_with_account(account)
+    return b64dict(OracleResponse(msg=msg, sig=sig))
