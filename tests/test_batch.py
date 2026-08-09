@@ -4,7 +4,10 @@ from base64 import b64encode
 from pathlib import Path
 from typing import Any
 
-from quex_backend.batch import EthereumBatchHTTPAction
+from quex_backend.batch import (
+    EthereumBatchHTTPAction,
+    EthereumBatchHTTPActionWithProof,
+)
 from quex_backend.models import (
     HTTPPrivatePatch,
     HTTPRequest,
@@ -56,6 +59,15 @@ class TestBatchActionEncoding(unittest.TestCase):
             action = batch_action_from_dict(v["action"])
             self.assertEqual(b64encode(action.bytes()).decode("ascii"), v["bytes"])
             self.assertEqual("0x" + action.action_id().hex(), v["action_id"])
+
+    def test_batch_action_with_proof_parse_roundtrip(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        wrapped = EthereumBatchHTTPActionWithProof(action=action, proof=b"\x01\x02\x03")
+
+        parsed = EthereumBatchHTTPActionWithProof.parse(wrapped.bytes())
+
+        self.assertEqual(parsed, wrapped)
+        self.assertEqual(parsed.action.action_id(), action.action_id())
 
 
 if __name__ == "__main__":

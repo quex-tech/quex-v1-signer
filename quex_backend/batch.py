@@ -4,7 +4,12 @@ from typing import List
 import eth_abi
 from eth_utils import keccak
 
-from quex_backend.models import ABIEncodable, HTTPPrivatePatch, HTTPRequest
+from quex_backend.models import (
+    ABIEncodable,
+    HTTPPrivatePatch,
+    HTTPRequest,
+    from_nested_tuple,
+)
 
 BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
 
@@ -27,3 +32,21 @@ class EthereumBatchHTTPAction(ABIEncodable):
         return keccak(
             eth_abi.encode(["bytes32", self.obj_schema()], [BATCH_ACTION_DOMAIN, astuple(self)])
         )
+
+
+@dataclass
+class EthereumBatchHTTPActionWithProof(ABIEncodable):
+    action: EthereumBatchHTTPAction
+    proof: bytes
+
+    @staticmethod
+    def obj_schema() -> str:
+        return f"({EthereumBatchHTTPAction.obj_schema()},bytes)"
+
+    @staticmethod
+    def parse(data: bytes) -> "EthereumBatchHTTPActionWithProof":
+        (data_tuple,) = eth_abi.decode([EthereumBatchHTTPActionWithProof.obj_schema()], data)
+        result: EthereumBatchHTTPActionWithProof = from_nested_tuple(
+            data_tuple, EthereumBatchHTTPActionWithProof
+        )
+        return result
