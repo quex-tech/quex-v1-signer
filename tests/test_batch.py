@@ -92,7 +92,7 @@ class TestBatchActionEncoding(unittest.TestCase):
         for v in self.vectors:
             action = batch_action_from_dict(v["action"])
             self.assertEqual(b64encode(action.bytes()).decode("ascii"), v["bytes"])
-            self.assertEqual("0x" + action.action_id().hex(), v["action_id"])
+            self.assertEqual(action.action_id().hex(), v["action_id"])
 
     def test_action_id_differs_from_untagged_bytes_hash(self):
         # The id preimage is domain-tagged; hashing the plain encoding must give another value,
