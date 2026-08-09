@@ -74,6 +74,9 @@ def create_app() -> Flask:
     from . import routes
     app.register_blueprint(routes.bp)
 
+    from . import batch_routes
+    app.register_blueprint(batch_routes.bp)
+
     limiter = Limiter(
             get_remote_address, 
             storage_uri="memory://",

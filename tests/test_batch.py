@@ -1,6 +1,6 @@
 import json
 import unittest
-from base64 import b64encode
+from base64 import b64decode, b64encode
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
@@ -106,6 +106,50 @@ class TestBatchActionEncoding(unittest.TestCase):
 
         self.assertEqual(parsed, wrapped)
         self.assertEqual(parsed.action.action_id(), action.action_id())
+
+
+class TestQueryBatchRoute(unittest.TestCase):
+    vectors = TestBatchActionEncoding.vectors
+
+    def setUp(self) -> None:
+        from quex_backend import create_app
+
+        self.client = create_app().test_client()
+
+    def post_action(self, action: EthereumBatchHTTPAction) -> Any:
+        wrapped = EthereumBatchHTTPActionWithProof(action=action, proof=b"")
+        payload = {
+            "action": b64encode(wrapped.bytes()).decode("ascii"),
+            "relayer": "0x1111111111111111111111111111111111111111",
+        }
+        return self.client.post("/query_batch", json=payload)
+
+    def test_query_batch_returns_signed_sum_of_sources(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.filter = "map(.price | tonumber) | add | round"
+
+        with patch("quex_backend.batch_routes.get_timestamp", return_value=1700000000):
+            with patch("requests.Session.request") as mock_request:
+
+                def respond(method: str, url: str, **kwargs: Any) -> Mock:
+                    if "binance" in url:
+                        return Mock(status_code=200, json=lambda: {"price": "2"})
+                    return Mock(status_code=200, json=lambda: {"price": "3"})
+
+                mock_request.side_effect = respond
+
+                response = self.post_action(action)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["msg"]["data_item"]["error"], 0)
+        self.assertEqual(
+            b64decode(data["msg"]["action_id"]), action.action_id()
+        )
+        self.assertEqual(
+            eth_abi.decode(["uint256"], b64decode(data["msg"]["data_item"]["value"])), (5,)
+        )
+        self.assertIn("sig", data)
 
 
 def get_request(host: str) -> HTTPRequest:
