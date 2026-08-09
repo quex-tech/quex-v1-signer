@@ -3,12 +3,17 @@ import unittest
 from base64 import b64encode
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock, patch
+
+from requests.exceptions import Timeout
 
 from quex_backend.batch import (
     MAX_BATCH_SIZE,
+    SOURCE_TIMEOUT_SECONDS,
     BatchActionValidationError,
     EthereumBatchHTTPAction,
     EthereumBatchHTTPActionWithProof,
+    fetch_all,
 )
 from quex_backend.models import (
     HTTPPrivatePatch,
@@ -19,6 +24,7 @@ from quex_backend.models import (
     RequestHeaderPatch,
     RequestMethod,
 )
+from quex_backend.utils import RequestConnectionError
 
 
 def request_from_dict(data: dict[str, Any]) -> HTTPRequest:
@@ -94,6 +100,42 @@ class TestBatchActionEncoding(unittest.TestCase):
 
         self.assertEqual(parsed, wrapped)
         self.assertEqual(parsed.action.action_id(), action.action_id())
+
+
+def get_request(host: str) -> HTTPRequest:
+    return HTTPRequest(
+        method=RequestMethod.GET, host=host, path="/", headers=[], parameters=[], body=b""
+    )
+
+
+class TestBatchFetch(unittest.TestCase):
+    def test_fetch_all_preserves_request_order_and_passes_timeout(self):
+        with patch("requests.Session.request") as mock_request:
+
+            def respond(method: str, url: str, **kwargs: Any) -> Mock:
+                if "one.example.com" in url:
+                    return Mock(status_code=200, json=lambda: {"n": 1})
+                return Mock(status_code=200, json=lambda: {"n": 2})
+
+            mock_request.side_effect = respond
+
+            results = fetch_all([get_request("one.example.com"), get_request("two.example.com")])
+
+            self.assertEqual(results, [{"n": 1}, {"n": 2}])
+            self.assertEqual(mock_request.call_args.kwargs["timeout"], SOURCE_TIMEOUT_SECONDS)
+
+    def test_fetch_all_fails_all_when_one_source_times_out(self):
+        with patch("requests.Session.request") as mock_request:
+
+            def respond(method: str, url: str, **kwargs: Any) -> Mock:
+                if "dead.example.com" in url:
+                    raise Timeout()
+                return Mock(status_code=200, json=lambda: {"n": 1})
+
+            mock_request.side_effect = respond
+
+            with self.assertRaises(RequestConnectionError):
+                fetch_all([get_request("live.example.com"), get_request("dead.example.com")])
 
 
 if __name__ == "__main__":

@@ -1,8 +1,12 @@
+import ssl
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import astuple, dataclass
-from typing import List
+from typing import Any, List
 
 import eth_abi
+import requests
 from eth_utils import keccak
+from requests.exceptions import ConnectionError, Timeout
 
 from quex_backend.models import (
     ABIEncodable,
@@ -10,9 +14,18 @@ from quex_backend.models import (
     HTTPRequest,
     from_nested_tuple,
 )
+from quex_backend.utils import (
+    RequestConnectionError,
+    Response4XXError,
+    Response5XXError,
+    ResponseNotJSONError,
+    ResponseNotSupportedResponseCodeError,
+    SSLAdapter,
+)
 
 BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
 MAX_BATCH_SIZE = 8
+SOURCE_TIMEOUT_SECONDS = 3
 
 
 class BatchActionValidationError(Exception):
@@ -65,3 +78,53 @@ class EthereumBatchHTTPActionWithProof(ABIEncodable):
             data_tuple, EthereumBatchHTTPActionWithProof
         )
         return result
+
+
+# Mirror of utils.make_request with a per-source timeout. The v1 code path must stay
+# byte-for-byte untouched, so the timeout lives here instead of a shared parameter.
+def make_batch_request(qrr: HTTPRequest) -> Any:
+    try:
+        url = qrr.build_url()
+
+        context = ssl.create_default_context()
+        context.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+        session = requests.Session()
+        session.mount("https://", SSLAdapter(ssl_context=context))
+
+        r = session.request(
+            qrr.method.string_value(),
+            url,
+            params=qrr.get_parameters(),
+            headers=qrr.get_headers(),
+            data=qrr.get_body(),
+            verify=True,
+            allow_redirects=False,
+            timeout=SOURCE_TIMEOUT_SECONDS,
+        )
+    except (ConnectionError, Timeout) as exc:
+        raise RequestConnectionError from exc
+
+    if 300 <= r.status_code < 400 or r.status_code >= 600:
+        raise ResponseNotSupportedResponseCodeError(r.status_code)
+    elif 400 <= r.status_code < 500:
+        raise Response4XXError(r.status_code)
+    elif 500 <= r.status_code < 600:
+        raise Response5XXError(r.status_code)
+
+    if r.status_code == 204:
+        return ""
+
+    try:
+        return r.json()
+    except Exception as exc:
+        raise ResponseNotJSONError from exc
+
+
+def fetch_all(batch_requests: List[HTTPRequest]) -> List[Any]:
+    # Fail-all: the first raising future propagates; the with-block still joins the rest,
+    # each bounded by its own per-source timeout.
+    with ThreadPoolExecutor(max_workers=len(batch_requests)) as pool:
+        futures = [pool.submit(make_batch_request, r) for r in batch_requests]
+        return [f.result() for f in futures]
