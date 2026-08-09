@@ -6,7 +6,7 @@ from typing import Any, List
 import eth_abi
 import requests
 from eth_utils import keccak
-from requests.exceptions import ConnectionError, Timeout
+from requests.exceptions import RequestException
 
 from quex_backend.encryption import EncryptedPatchProcessor
 from quex_backend.models import (
@@ -35,6 +35,9 @@ BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
 # Consensus-relevant: every TD must derive identical results for the same action id,
 # so these are code constants, never config.
 MAX_BATCH_SIZE = 8
+# Cap the total encrypted patch fields across the batch: each one costs a full ECDH scalar
+# multiplication with the TD long-term key, so an unbounded count is a CPU-exhaustion vector.
+MAX_PATCH_FIELDS = 32
 # Per-socket connect/read timeout: it does NOT bound a source dripping bytes slowly.
 SOURCE_TIMEOUT_SECONDS = 3
 # Wall-clock bound for the whole batch, covering slow-drip sources the socket timeout misses.
@@ -66,6 +69,19 @@ class EthereumBatchHTTPAction(ABIEncodable):
         if len(self.patches) != len(self.requests):
             raise BatchActionValidationError(
                 f"patch count {len(self.patches)} does not match request count {len(self.requests)}"
+            )
+        for request in self.requests:
+            # A rooted relative path keeps urljoin from letting the path override the host or
+            # downgrade the scheme (e.g. an absolute http://169.254.169.254/... metadata URL).
+            if not request.path.startswith("/") or "://" in request.path:
+                raise BatchActionValidationError("request path must be a rooted relative path")
+        total_patch_fields = sum(
+            len(p.headers) + len(p.parameters) + bool(p.body) + bool(p.path_suffix)
+            for p in self.patches
+        )
+        if total_patch_fields > MAX_PATCH_FIELDS:
+            raise BatchActionValidationError(
+                f"batch has {total_patch_fields} encrypted patch fields, max {MAX_PATCH_FIELDS}"
             )
 
     def id_preimage(self) -> bytes:
@@ -151,7 +167,10 @@ def make_source_request(qrr: HTTPRequest) -> Any:
             allow_redirects=False,
             timeout=SOURCE_TIMEOUT_SECONDS,
         )
-    except (ConnectionError, Timeout) as exc:
+    except (RequestException, ValueError) as exc:
+        # Translate every requests-layer failure (incl. InvalidHeader/InvalidURL and plain
+        # ValueErrors from bad header bytes) so nothing escapes to the route catch-all where
+        # its text, possibly containing a decrypted secret, would be signed on-chain.
         raise RequestConnectionError from exc
 
     if 300 <= r.status_code < 400 or r.status_code >= 600:

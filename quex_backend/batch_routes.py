@@ -78,10 +78,12 @@ def query_batch() -> dict[str, Any]:
             return QuexErrorCodes.JQ_PROCESSING_ERROR, b""
         except ABIEncodingError:
             return QuexErrorCodes.ABI_ENCODING_ERROR, b""
-        except RequestProcessingError as exc:
-            return QuexErrorCodes.INTERNAL_REQUEST_PROCESSING_ERROR, str(exc).encode()
-        except Exception as exc:
-            return QuexErrorCodes.INTERNAL_OTHER_ERROR, str(exc).encode()
+        except RequestProcessingError:
+            # Never sign exception text: it can carry a decrypted patch secret or
+            # attacker-chosen bytes from a source. Detail is logged locally, not on-chain.
+            return QuexErrorCodes.INTERNAL_REQUEST_PROCESSING_ERROR, b""
+        except Exception:
+            return QuexErrorCodes.INTERNAL_OTHER_ERROR, b""
 
     status_code, value = execute_action()
 

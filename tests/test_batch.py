@@ -14,6 +14,7 @@ from requests.exceptions import Timeout
 from quex_backend import create_app
 from quex_backend.batch import (
     MAX_BATCH_SIZE,
+    MAX_PATCH_FIELDS,
     SOURCE_TIMEOUT_SECONDS,
     BatchActionValidationError,
     EthereumBatchHTTPAction,
@@ -127,6 +128,20 @@ class TestBatchActionEncoding(unittest.TestCase):
     def test_validate_rejects_patch_count_mismatch(self):
         action = batch_action_from_dict(self.vectors[0]["action"])
         action.patches = action.patches[:1]
+        with self.assertRaises(BatchActionValidationError):
+            action.validate()
+
+    def test_validate_rejects_non_rooted_path(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.requests[0].path = "http://169.254.169.254/latest/meta-data/"
+        with self.assertRaises(BatchActionValidationError):
+            action.validate()
+
+    def test_validate_rejects_too_many_patch_fields(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.patches[0].parameters = [
+            QueryParameterPatch(f"k{i}", b"x") for i in range(MAX_PATCH_FIELDS + 1)
+        ]
         with self.assertRaises(BatchActionValidationError):
             action.validate()
 
@@ -264,6 +279,15 @@ class TestBatchFetch(unittest.TestCase):
                     mock_request.return_value = Mock(status_code=status)
                     with self.assertRaises(expected):
                         make_source_request(get_request("api.example.com"))
+
+    def test_make_source_request_translates_requests_errors_to_connection_error(self):
+        # A bad decrypted header byte raises deep in requests; it must become a fail-all
+        # connection error, never escape to a handler that would sign its text.
+        from requests.exceptions import InvalidHeader
+
+        with patch("requests.Session.request", side_effect=InvalidHeader("sk_live_SECRET")):
+            with self.assertRaises(RequestConnectionError):
+                make_source_request(get_request("api.example.com"))
 
     def test_make_source_request_handles_204_and_non_json(self):
         with patch("requests.Session.request") as mock_request:
