@@ -13,6 +13,7 @@ from quex_backend.batch import (
     BatchActionValidationError,
     EthereumBatchHTTPAction,
     EthereumBatchHTTPActionWithProof,
+    apply_batch_patches,
     fetch_all,
 )
 from quex_backend.models import (
@@ -25,6 +26,9 @@ from quex_backend.models import (
     RequestMethod,
 )
 from quex_backend.utils import RequestConnectionError
+from quex_backend.encryption import EncryptedPatchProcessor
+from ecdsa import SECP256k1, SigningKey
+from tests.client import Client
 
 
 def request_from_dict(data: dict[str, Any]) -> HTTPRequest:
@@ -106,6 +110,27 @@ def get_request(host: str) -> HTTPRequest:
     return HTTPRequest(
         method=RequestMethod.GET, host=host, path="/", headers=[], parameters=[], body=b""
     )
+
+
+class TestBatchPatchApplication(unittest.TestCase):
+    vectors = TestBatchActionEncoding.vectors
+
+    def test_apply_batch_patches_decrypts_per_pair_with_batch_action_id(self):
+        private_key = SigningKey.generate(curve=SECP256k1)
+        processor = EncryptedPatchProcessor.from_hex(private_key.to_string().hex())
+        client = Client(processor.get_public_key())
+
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.patches[1].headers = [
+            RequestHeaderPatch("X-Api-Key", client.encrypt_message(b"secret"))
+        ]
+        proof = client.encrypt_message(action.action_id(), include_ephemeral_public_key=True)
+
+        patched = apply_batch_patches(processor, action, proof)
+
+        self.assertEqual(len(patched), 2)
+        self.assertEqual(patched[0].headers, action.requests[0].headers)
+        self.assertIn(RequestHeader("X-Api-Key", "secret"), patched[1].headers)
 
 
 class TestBatchFetch(unittest.TestCase):

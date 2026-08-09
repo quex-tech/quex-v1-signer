@@ -8,8 +8,10 @@ import requests
 from eth_utils import keccak
 from requests.exceptions import ConnectionError, Timeout
 
+from quex_backend.encryption import EncryptedPatchProcessor
 from quex_backend.models import (
     ABIEncodable,
+    HTTPAction,
     HTTPPrivatePatch,
     HTTPRequest,
     from_nested_tuple,
@@ -78,6 +80,35 @@ class EthereumBatchHTTPActionWithProof(ABIEncodable):
             data_tuple, EthereumBatchHTTPActionWithProof
         )
         return result
+
+
+# Adapter presenting one (request, patch) pair to EncryptedPatchProcessor.apply_patch,
+# which binds the decryption proof to the id of the WHOLE batch action.
+@dataclass
+class _BatchPairAction(HTTPAction):
+    batch_action_id: bytes = b""
+
+    def action_id(self) -> bytes:
+        return self.batch_action_id
+
+
+def apply_batch_patches(
+    processor: EncryptedPatchProcessor, action: EthereumBatchHTTPAction, proof: bytes
+) -> List[HTTPRequest]:
+    action_id = action.action_id()
+    return [
+        processor.apply_patch(
+            _BatchPairAction(
+                request=request,
+                patch=patch,
+                schema=action.schema,
+                filter=action.filter,
+                batch_action_id=action_id,
+            ),
+            proof,
+        )
+        for request, patch in zip(action.requests, action.patches, strict=True)
+    ]
 
 
 # Mirror of utils.make_request with a per-source timeout. The v1 code path must stay
