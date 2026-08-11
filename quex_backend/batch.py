@@ -7,7 +7,10 @@ import eth_abi
 from eth_utils import keccak
 from requests.exceptions import RequestException
 
-from quex_backend.encryption import EncryptedPatchProcessor
+from quex_backend.encryption import (
+    EncryptedPatchProcessingError,
+    EncryptedPatchProcessor,
+)
 from quex_backend.models import (
     ABIEncodable,
     HTTPPrivatePatch,
@@ -22,6 +25,9 @@ BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
 SOURCE_TIMEOUT_SECONDS = 3
 # Wall-clock bound for the whole batch, covers slow-drip sources.
 BATCH_DEADLINE_SECONDS = 10
+# Fixed pool size: fetch concurrency must not depend on the host, or TDs of one pool
+# could disagree on whether a large batch meets the deadline (consensus-relevant).
+MAX_FETCH_WORKERS = 32
 
 
 class BatchActionValidationError(Exception):
@@ -47,7 +53,7 @@ class EthereumBatchHTTPAction(ABIEncodable):
         if len(self.patches) != len(self.requests):
             raise BatchActionValidationError("patch count does not match request count")
         for request in self.requests:
-            # A scheme, a host, or a backslash lets urljoin override the host (SSRF).
+            # A scheme, a host, or a backslash lets the path override the declared host.
             parts = urlsplit(request.path)
             bad = parts.scheme or parts.netloc or "\\" in request.path
             if bad or not parts.path.startswith("/"):
@@ -82,13 +88,23 @@ class EthereumBatchHTTPActionWithProof(ABIEncodable):
         return result
 
 
-# Every pair is decrypted with the same proof, bound to the whole-batch action id.
+# One proof covers the whole batch, so the ephemeral key is recovered once (one ECDH),
+# not once per pair; batches with no encrypted fields never touch the proof, as in v1.
 def apply_batch_patches(
     processor: EncryptedPatchProcessor, action: EthereumBatchHTTPAction, proof: bytes
 ) -> list[HTTPRequest]:
     action_id = action.action_id()
+    key = None
+    encrypted = any(
+        p.headers or p.parameters or p.body or p.path_suffix for p in action.patches
+    )
+    if encrypted:
+        try:
+            key = processor.recover_ephemeral_public_key(action_id, proof)
+        except Exception as exc:
+            raise EncryptedPatchProcessingError from exc
     return [
-        processor.apply_patch(request, patch, action_id, proof)
+        processor.apply_patch(request, patch, action_id, proof, key)
         for request, patch in zip(action.requests, action.patches, strict=True)
     ]
 
@@ -103,7 +119,8 @@ def make_source_request(qrr: HTTPRequest) -> Any:
 
 # Fail-all in request order; a deadline miss maps to RequestConnectionError.
 def fetch_all_sources(batch_requests: list[HTTPRequest]) -> list[Any]:
-    pool = ThreadPoolExecutor()
+    workers = min(len(batch_requests) or 1, MAX_FETCH_WORKERS)
+    pool = ThreadPoolExecutor(max_workers=workers)
     try:
         futures = [pool.submit(make_source_request, r) for r in batch_requests]
         _, pending = wait(futures, timeout=BATCH_DEADLINE_SECONDS)

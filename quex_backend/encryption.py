@@ -41,13 +41,17 @@ class EncryptedPatchProcessor:
         return decrypted_message
 
     def apply_patch(
-        self, request: HTTPRequest, patch: HTTPPrivatePatch, action_id: bytes, proof: bytes
+        self,
+        request: HTTPRequest,
+        patch: HTTPPrivatePatch,
+        action_id: bytes,
+        proof: bytes,
+        ephemeral_public_key: VerifyingKey | None = None,
     ) -> HTTPRequest:
         """Decrypt patch fields with a proof bound to action_id; return the patched request."""
         try:
             http_request = deepcopy(request)
             http_patch = patch
-            ephemeral_public_key = None
 
             for header_patch in http_patch.headers:
                 if ephemeral_public_key is None:
