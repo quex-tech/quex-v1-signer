@@ -152,6 +152,7 @@ class TestBatchActionEncoding(unittest.TestCase):
         def absolute_url_path(a): a.requests[0].path = "http://169.254.169.254/latest/meta-data/"
         def protocol_relative_path(a): a.requests[0].path = "//evil.example.com/x"
         def unrooted_path(a): a.requests[0].path = "api/v3"
+        def backslash_path(a): a.requests[0].path = "/\\evil.example.com/x"
         def too_many_patch_fields(a):
             a.patches[0].parameters = [
                 QueryParameterPatch(f"k{i}", b"x") for i in range(MAX_PATCH_FIELDS + 1)
@@ -163,6 +164,7 @@ class TestBatchActionEncoding(unittest.TestCase):
             ("absolute url path", absolute_url_path),
             ("protocol-relative path", protocol_relative_path),
             ("unrooted path", unrooted_path),
+            ("backslash path", backslash_path),
             ("too many patch fields", too_many_patch_fields),
         ]
 

@@ -1,3 +1,4 @@
+import re
 import ssl
 from typing import Any, Callable
 
@@ -49,6 +50,10 @@ class GetTimestampError(Exception):
 
 class ResponseNotJSONError(Exception):
     pass
+
+
+def is_eth_address(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"0x[0-9a-fA-F]{40}", value) is not None
 
 
 def get_timestamp() -> int:
@@ -104,16 +109,17 @@ def make_request(qrr: HTTPRequest, as_json: bool = True, timeout: float | None =
         session = requests.Session()
         session.mount("https://", SSLAdapter(ssl_context=context))
 
-        r = session.request(
-            qrr.method.string_value(),
-            url,
-            params=qrr.get_parameters(),
-            headers=qrr.get_headers(),
-            data=qrr.get_body(),
-            verify=True,
-            allow_redirects=False,
-            timeout=timeout,
-        )
+        with session:
+            r = session.request(
+                qrr.method.string_value(),
+                url,
+                params=qrr.get_parameters(),
+                headers=qrr.get_headers(),
+                data=qrr.get_body(),
+                verify=True,
+                allow_redirects=False,
+                timeout=timeout,
+            )
     except (ConnectionError, Timeout) as exc:
         raise RequestConnectionError from exc
 

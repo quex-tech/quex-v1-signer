@@ -1,4 +1,3 @@
-import re
 from base64 import b64decode
 from typing import Any
 
@@ -33,6 +32,7 @@ from quex_backend.utils import (
     ResponseNotJSONError,
     ResponseNotSupportedResponseCodeError,
     get_timestamp,
+    is_eth_address,
     process_json,
 )
 
@@ -62,7 +62,7 @@ def query_batch() -> dict[str, Any]:
         payload = request.get_json()
         action_bytes = b64decode(payload["action"])
         relayer = payload["relayer"]
-        if not re.fullmatch(r"0x[0-9a-fA-F]{40}", relayer):
+        if not is_eth_address(relayer):
             raise BadRequest("relayer must be a 0x-prefixed 20-byte hex address")
         qr = EthereumBatchHTTPActionWithProof.parse(action_bytes)
     except (

@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import astuple, dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import eth_abi
 from eth_utils import keccak
@@ -46,44 +47,30 @@ class EthereumBatchHTTPAction(ABIEncodable):
         return f"({req}[],{patch}[],string,string)"
 
     def validate(self) -> None:
-        if not 1 <= len(self.requests) <= MAX_BATCH_SIZE:
-            raise BatchActionValidationError(
-                f"batch must contain 1..{MAX_BATCH_SIZE} requests, "
-                f"got {len(self.requests)}"
-            )
-        if len(self.patches) != len(self.requests):
-            raise BatchActionValidationError(
-                f"patch count {len(self.patches)} does not match request count "
-                f"{len(self.requests)}"
-            )
+        n = len(self.requests)
+        if not 1 <= n <= MAX_BATCH_SIZE:
+            raise BatchActionValidationError(f"bad batch size: {n}")
+        if len(self.patches) != n:
+            raise BatchActionValidationError("patch count does not match request count")
         for request in self.requests:
-            # Absolute or protocol-relative paths let urljoin override the host (SSRF).
-            if (
-                not request.path.startswith("/")
-                or request.path.startswith("//")
-                or "://" in request.path
-            ):
-                raise BatchActionValidationError(
-                    "request path must be a rooted relative path"
-                )
-        total_patch_fields = sum(
+            # A scheme, a host, or a backslash lets urljoin override the host (SSRF).
+            parts = urlsplit(request.path)
+            bad = parts.scheme or parts.netloc or "\\" in request.path
+            if bad or not parts.path.startswith("/"):
+                raise BatchActionValidationError("path must be a rooted relative path")
+        fields = sum(
             len(p.headers) + len(p.parameters) + bool(p.body) + bool(p.path_suffix)
             for p in self.patches
         )
-        if total_patch_fields > MAX_PATCH_FIELDS:
-            raise BatchActionValidationError(
-                f"batch has {total_patch_fields} encrypted patch fields, "
-                f"max {MAX_PATCH_FIELDS}"
-            )
+        if fields > MAX_PATCH_FIELDS:
+            raise BatchActionValidationError(f"too many patch fields: {fields}")
 
-    # Canonical id preimage; the domain tag keeps batch ids disjoint from v1 action ids.
-    def id_preimage(self) -> bytes:
-        return eth_abi.encode(
+    # The domain-tagged preimage keeps batch ids disjoint from v1 action ids.
+    def action_id(self) -> bytes:
+        preimage = eth_abi.encode(
             ["bytes32", self.obj_schema()], [BATCH_ACTION_DOMAIN, astuple(self)]
         )
-
-    def action_id(self) -> bytes:
-        return keccak(self.id_preimage())
+        return keccak(preimage)
 
 
 @dataclass

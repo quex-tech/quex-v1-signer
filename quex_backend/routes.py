@@ -4,6 +4,7 @@ from typing import Any
 from eth_abi import encode as eth_abi_encode
 from eth_keys import keys
 from flask import Blueprint, request
+from werkzeug.exceptions import BadRequest
 
 from quex_backend import account, get_quote, patch_processor
 from quex_backend.encryption import EncryptedPatchProcessingError
@@ -33,6 +34,7 @@ from quex_backend.utils import (
     ResponseNotJSONError,
     ResponseNotSupportedResponseCodeError,
     get_timestamp,
+    is_eth_address,
     make_request,
     process_json,
 )
@@ -97,6 +99,8 @@ def query() -> dict[str, Any]:
         action_cls = EthereumHTTPActionWithProof
         msg_cls = EthereumOracleMessage
         encode = eth_abi_encode
+        if not is_eth_address(relayer):
+            raise BadRequest("relayer must be a 0x-prefixed 20-byte hex address")
 
     qr = action_cls.parse(action_bytes)
 
