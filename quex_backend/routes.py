@@ -105,7 +105,9 @@ def query() -> dict[str, Any]:
     qr = action_cls.parse(action_bytes)
 
     try:
-        patched_http_request = patch_processor.apply_patch(qr.action, qr.proof)
+        patched_http_request = patch_processor.apply_patch(
+            qr.action.request, qr.action.patch, qr.action.action_id(), qr.proof
+        )
         response_json = make_request(patched_http_request)
         processed_response = process_json(response_json, qr.action.filter, qr.action.schema, encode)
         return create_response(msg_cls, qr.action.action_id(), relayer, QuexErrorCodes.SUCCESS, processed_response)

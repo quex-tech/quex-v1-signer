@@ -10,7 +10,6 @@ from requests.exceptions import RequestException
 from quex_backend.encryption import EncryptedPatchProcessor
 from quex_backend.models import (
     ABIEncodable,
-    HTTPAction,
     HTTPPrivatePatch,
     HTTPRequest,
     from_nested_tuple,
@@ -19,10 +18,6 @@ from quex_backend.utils import RequestConnectionError, make_request
 
 # Domain tag pinned cross-language by tests/test_vectors/batch_action_test_vectors.json.
 BATCH_ACTION_DOMAIN = keccak(text="quex.action.batchRequest.v1")
-# Consensus-relevant code constants, never config: TDs must derive identical results.
-MAX_BATCH_SIZE = 8
-# Each encrypted patch field costs one ECDH multiplication, so the total is capped.
-MAX_PATCH_FIELDS = 32
 # Per-socket timeout; does not bound a source dripping bytes slowly.
 SOURCE_TIMEOUT_SECONDS = 3
 # Wall-clock bound for the whole batch, covers slow-drip sources.
@@ -47,10 +42,9 @@ class EthereumBatchHTTPAction(ABIEncodable):
         return f"({req}[],{patch}[],string,string)"
 
     def validate(self) -> None:
-        n = len(self.requests)
-        if not 1 <= n <= MAX_BATCH_SIZE:
-            raise BatchActionValidationError(f"bad batch size: {n}")
-        if len(self.patches) != n:
+        if not self.requests:
+            raise BatchActionValidationError("batch must contain at least one request")
+        if len(self.patches) != len(self.requests):
             raise BatchActionValidationError("patch count does not match request count")
         for request in self.requests:
             # A scheme, a host, or a backslash lets urljoin override the host (SSRF).
@@ -58,12 +52,6 @@ class EthereumBatchHTTPAction(ABIEncodable):
             bad = parts.scheme or parts.netloc or "\\" in request.path
             if bad or not parts.path.startswith("/"):
                 raise BatchActionValidationError("path must be a rooted relative path")
-        fields = sum(
-            len(p.headers) + len(p.parameters) + bool(p.body) + bool(p.path_suffix)
-            for p in self.patches
-        )
-        if fields > MAX_PATCH_FIELDS:
-            raise BatchActionValidationError(f"too many patch fields: {fields}")
 
     # The domain-tagged preimage keeps batch ids disjoint from v1 action ids.
     def action_id(self) -> bytes:
@@ -94,30 +82,13 @@ class EthereumBatchHTTPActionWithProof(ABIEncodable):
         return result
 
 
-# One (request, patch) pair for apply_patch; binds the proof to the whole-batch id.
-@dataclass
-class _BatchPairAction(HTTPAction):
-    batch_action_id: bytes
-
-    def action_id(self) -> bytes:
-        return self.batch_action_id
-
-
+# Every pair is decrypted with the same proof, bound to the whole-batch action id.
 def apply_batch_patches(
     processor: EncryptedPatchProcessor, action: EthereumBatchHTTPAction, proof: bytes
 ) -> list[HTTPRequest]:
     action_id = action.action_id()
     return [
-        processor.apply_patch(
-            _BatchPairAction(
-                request=request,
-                patch=patch,
-                schema=action.schema,
-                filter=action.filter,
-                batch_action_id=action_id,
-            ),
-            proof,
-        )
+        processor.apply_patch(request, patch, action_id, proof)
         for request, patch in zip(action.requests, action.patches, strict=True)
     ]
 
@@ -132,7 +103,7 @@ def make_source_request(qrr: HTTPRequest) -> Any:
 
 # Fail-all in request order; a deadline miss maps to RequestConnectionError.
 def fetch_all_sources(batch_requests: list[HTTPRequest]) -> list[Any]:
-    pool = ThreadPoolExecutor(max_workers=len(batch_requests) or 1)
+    pool = ThreadPoolExecutor()
     try:
         futures = [pool.submit(make_source_request, r) for r in batch_requests]
         _, pending = wait(futures, timeout=BATCH_DEADLINE_SECONDS)

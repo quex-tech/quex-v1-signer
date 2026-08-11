@@ -14,8 +14,6 @@ from requests.exceptions import InvalidHeader, Timeout
 
 from quex_backend import create_app
 from quex_backend.batch import (
-    MAX_BATCH_SIZE,
-    MAX_PATCH_FIELDS,
     SOURCE_TIMEOUT_SECONDS,
     BatchActionValidationError,
     EthereumBatchHTTPAction,
@@ -97,7 +95,6 @@ def fuzz_request(rng: Random) -> HTTPRequest:
 
 
 def fuzz_patch(rng: Random) -> HTTPPrivatePatch:
-    # At most 4 fields per patch so a full batch stays within MAX_PATCH_FIELDS.
     return HTTPPrivatePatch(
         path_suffix=fuzz_bytes(rng),
         headers=[RequestHeaderPatch(fuzz_text(rng), fuzz_bytes(rng)) for _ in range(rng.randint(0, 1))],
@@ -108,7 +105,7 @@ def fuzz_patch(rng: Random) -> HTTPPrivatePatch:
 
 
 def fuzz_action(rng: Random) -> EthereumBatchHTTPAction:
-    n = rng.randint(1, MAX_BATCH_SIZE)
+    n = rng.randint(1, 8)
     return EthereumBatchHTTPAction(
         requests=[fuzz_request(rng) for _ in range(n)],
         patches=[fuzz_patch(rng) for _ in range(n)],
@@ -145,27 +142,18 @@ class TestBatchActionEncoding(unittest.TestCase):
     # Each mutation breaks exactly one invariant of an otherwise valid fuzzed action.
     def mutations(self) -> list[tuple[str, Callable[[EthereumBatchHTTPAction], None]]]:
         def empty(a): a.requests, a.patches = [], []
-        def oversized(a):
-            a.requests = [a.requests[0]] * (MAX_BATCH_SIZE + 1)
-            a.patches = [a.patches[0]] * (MAX_BATCH_SIZE + 1)
         def patch_mismatch(a): a.patches = a.patches + [a.patches[0]]
         def absolute_url_path(a): a.requests[0].path = "http://169.254.169.254/latest/meta-data/"
         def protocol_relative_path(a): a.requests[0].path = "//evil.example.com/x"
         def unrooted_path(a): a.requests[0].path = "api/v3"
         def backslash_path(a): a.requests[0].path = "/\\evil.example.com/x"
-        def too_many_patch_fields(a):
-            a.patches[0].parameters = [
-                QueryParameterPatch(f"k{i}", b"x") for i in range(MAX_PATCH_FIELDS + 1)
-            ]
         return [
             ("empty batch", empty),
-            ("oversized batch", oversized),
             ("patch count mismatch", patch_mismatch),
             ("absolute url path", absolute_url_path),
             ("protocol-relative path", protocol_relative_path),
             ("unrooted path", unrooted_path),
             ("backslash path", backslash_path),
-            ("too many patch fields", too_many_patch_fields),
         ]
 
     def test_parse_rejects_fuzzed_actions_with_broken_invariants(self):

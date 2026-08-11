@@ -6,7 +6,7 @@ from Crypto.Hash import SHA256
 from Crypto.Protocol.KDF import HKDF
 from ecdsa import SECP256k1, SigningKey, VerifyingKey
 
-from quex_backend.models import HTTPRequest, RequestHeader, QueryParameter, HTTPAction
+from quex_backend.models import HTTPRequest, HTTPPrivatePatch, RequestHeader, QueryParameter
 
 class EncryptedPatchProcessingError(Exception):
     pass
@@ -40,40 +40,36 @@ class EncryptedPatchProcessor:
 
         return decrypted_message
 
-    def apply_patch(self, quex_request: HTTPAction, proof: bytes) -> 'HTTPRequest':
-        """
-        Apply the HTTPPrivatePatch to the HTTPRequest within the QuexRequest,
-        decrypting any encrypted fields and updating the HTTPRequest.
-        
-        Returns:
-            HTTPRequest: The patched HTTPRequest
-        """
+    def apply_patch(
+        self, request: HTTPRequest, patch: HTTPPrivatePatch, action_id: bytes, proof: bytes
+    ) -> HTTPRequest:
+        """Decrypt patch fields with a proof bound to action_id; return the patched request."""
         try:
-            http_request = deepcopy(quex_request.request)
-            http_patch = quex_request.patch
+            http_request = deepcopy(request)
+            http_patch = patch
             ephemeral_public_key = None
 
             for header_patch in http_patch.headers:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(action_id, proof)
                 decrypted_value = self.decrypt_message(header_patch.ciphertext, ephemeral_public_key)
                 http_request.headers.append(RequestHeader(header_patch.key, decrypted_value.decode('utf-8')))
 
             for param_patch in http_patch.parameters:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(action_id, proof)
                 decrypted_value = self.decrypt_message(param_patch.ciphertext, ephemeral_public_key)
                 http_request.parameters.append(QueryParameter(param_patch.key, decrypted_value.decode('utf-8')))
 
             if http_patch.body:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(action_id, proof)
                 decrypted_body = self.decrypt_message(http_patch.body, ephemeral_public_key)
                 http_request.body = decrypted_body
 
             if http_patch.path_suffix:
                 if ephemeral_public_key is None:
-                    ephemeral_public_key = self.recover_ephemeral_public_key(quex_request.action_id(), proof)
+                    ephemeral_public_key = self.recover_ephemeral_public_key(action_id, proof)
                 decrypted_path_suffix = self.decrypt_message(http_patch.path_suffix, ephemeral_public_key)
                 http_request.path += decrypted_path_suffix.decode('utf-8')
 

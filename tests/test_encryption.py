@@ -35,7 +35,10 @@ class TestModelsEncoding(unittest.TestCase):
 
             action = EthereumHTTPActionWithProof.parse(base64.b64decode(v["action_bytes"]))
             original_request = action.action.request
-            patched_request = patch_processor.apply_patch(action.action, action.proof)
+            patched_request = patch_processor.apply_patch(
+                action.action.request, action.action.patch,
+                action.action.action_id(), action.proof,
+            )
             print(f"\nOriginal request: {original_request}")
             print(f"\nPatched request : {patched_request}")
 
