@@ -41,7 +41,10 @@ bp = Blueprint("v1_batch", __name__)
 ERROR_CODES = [
     (EncryptedPatchProcessingError, QuexErrorCodes.PATCH_PROCESSING_ERROR),
     (RequestConnectionError, QuexErrorCodes.REQUEST_CONNECTION_ERROR),
-    (ResponseNotSupportedResponseCodeError, QuexErrorCodes.RESPONSE_NOT_SUPPORTED_RESPONSE_CODE_ERROR),
+    (
+        ResponseNotSupportedResponseCodeError,
+        QuexErrorCodes.RESPONSE_NOT_SUPPORTED_RESPONSE_CODE_ERROR,
+    ),
     (Response4XXError, QuexErrorCodes.RESPONSE_4XX_ERROR),
     (Response5XXError, QuexErrorCodes.RESPONSE_5XX_ERROR),
     (ResponseNotJSONError, QuexErrorCodes.RESPONSE_NOT_JSON_ERROR),
@@ -51,12 +54,10 @@ ERROR_CODES = [
 ]
 
 
-# EVM-only batch endpoint. Any single source failure fails the whole action (fail-all):
-# the signed DataItem carries the error code and an empty value.
+# EVM-only; any single source failure fails the whole action (fail-all).
 @bp.route("/query_batch", methods=["POST"])
 def query_batch() -> dict[str, Any]:
-    # A malformed request must not yield a signed message binding its action id, so the
-    # whole decode boundary maps to an unsigned 400.
+    # Malformed input gets an unsigned 400, never a signed message.
     try:
         payload = request.get_json()
         action_bytes = b64decode(payload["action"])
@@ -64,25 +65,26 @@ def query_batch() -> dict[str, Any]:
         if not re.fullmatch(r"0x[0-9a-fA-F]{40}", relayer):
             raise BadRequest("relayer must be a 0x-prefixed 20-byte hex address")
         qr = EthereumBatchHTTPActionWithProof.parse(action_bytes)
-    except (KeyError, TypeError, ValueError, DecodingError, BatchActionValidationError) as exc:
+    except (
+        KeyError, TypeError, ValueError, DecodingError, BatchActionValidationError
+    ) as exc:
         raise BadRequest(str(exc)) from exc
 
     try:
         patched_requests = apply_batch_patches(patch_processor, qr.action, qr.proof)
         results = fetch_all_sources(patched_requests)
-        value = process_json(results, qr.action.filter, qr.action.schema, eth_abi_encode)
+        action = qr.action
+        value = process_json(results, action.filter, action.schema, eth_abi_encode)
         status_code = QuexErrorCodes.SUCCESS
     except Exception as exc:
-        # Never sign exception text: it can carry a decrypted patch secret or attacker-chosen
-        # bytes from a source. The signed value stays empty on every error path.
+        # Never sign exception text; the signed value stays empty on every error path.
         status_code = next(
             (code for exc_type, code in ERROR_CODES if isinstance(exc, exc_type)),
             QuexErrorCodes.INTERNAL_OTHER_ERROR,
         )
         value = b""
 
-    # Signing must be infallible once the action ran; without a trusted timestamp there is
-    # nothing safe to sign, so an NTP outage yields an unsigned 503 and the relayer retries.
+    # Without trusted time there is nothing safe to sign: unsigned 503, relayer retries.
     try:
         timestamp = get_timestamp()
     except GetTimestampError as exc:

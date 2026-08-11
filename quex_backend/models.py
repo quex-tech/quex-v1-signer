@@ -1,4 +1,5 @@
 import dataclasses
+import typing
 from base64 import b64encode
 from dataclasses import dataclass, astuple, fields
 from enum import IntEnum
@@ -27,8 +28,8 @@ def b64dict(obj: Any) -> dict[str, Any]:
 
 
 def from_nested_tuple(t: Any, class_constructor: Any) -> Any:
-    if "_name" in dir(class_constructor) and class_constructor._name == "List":
-        return [from_nested_tuple(x, class_constructor.__args__[0]) for x in t]
+    if typing.get_origin(class_constructor) is list:
+        return [from_nested_tuple(x, typing.get_args(class_constructor)[0]) for x in t]
     elif type(t) == tuple:
         return class_constructor(
             *(

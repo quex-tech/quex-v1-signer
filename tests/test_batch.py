@@ -139,8 +139,7 @@ class TestBatchActionEncoding(unittest.TestCase):
                 parsed = EthereumBatchHTTPActionWithProof.parse(wrapped.bytes())
 
                 self.assertEqual(parsed, wrapped)
-                # The id preimage is domain-tagged; hashing the plain encoding must give another
-                # value, otherwise batch ids could collide with v1 single-request action ids.
+                # Domain tag: batch ids must never collide with v1 ids (untagged hash).
                 self.assertNotEqual(action.action_id(), keccak(action.bytes()))
 
     # Each mutation breaks exactly one invariant of an otherwise valid fuzzed action.
@@ -263,8 +262,7 @@ class TestBatchFetch(unittest.TestCase):
                 self.assertLess(time.monotonic() - started, 0.9)
 
     def test_make_source_request_translates_requests_errors_to_connection_error(self):
-        # A bad decrypted header byte raises deep in requests; it must become a fail-all
-        # connection error, never escape to a handler that would sign its text.
+        # Exception text may hold a decrypted secret; it must never reach a signing handler.
         with patch("requests.Session.request", side_effect=InvalidHeader("sk_live_SECRET")):
             with self.assertRaises(RequestConnectionError):
                 make_source_request(get_request("api.example.com"))
