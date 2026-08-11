@@ -33,7 +33,13 @@ from quex_backend.models import (
     RequestHeaderPatch,
     RequestMethod,
 )
-from quex_backend.utils import GetTimestampError, RequestConnectionError
+from quex_backend.utils import (
+    GetTimestampError,
+    RequestConnectionError,
+    Response4XXError,
+    Response5XXError,
+    ResponseNotJSONError,
+)
 from tests.client import Client
 
 FUZZ_ROUNDS = 50
@@ -203,6 +209,17 @@ class TestBatchPatchApplication(unittest.TestCase):
         with self.assertRaises(EncryptedPatchProcessingError):
             apply_batch_patches(self.processor, action, wrong_proof)
 
+    def test_apply_batch_patches_rejects_decrypted_path_suffix_overriding_host(self):
+        # validate() sees a rooted "/", but the decrypted path_suffix turns build_url into
+        # a different host; the post-patch check must reject it, not sign a redirected fetch.
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        action.requests[0].path = "/"
+        action.patches[0].path_suffix = self.client.encrypt_message(b"/evil.example.com/steal")
+        proof = self.client.encrypt_message(action.action_id(), include_ephemeral_public_key=True)
+
+        with self.assertRaises(EncryptedPatchProcessingError):
+            apply_batch_patches(self.processor, action, proof)
+
 
 class TestBatchFetch(unittest.TestCase):
     def test_fetch_all_sources_preserves_request_order_and_passes_timeout(self):
@@ -351,6 +368,27 @@ class TestQueryBatchRoute(unittest.TestCase):
                 response = self.post_action(action)
 
         self.assertEqual(response.status_code, 503)
+
+    def test_query_batch_maps_each_error_to_its_code_with_empty_value(self):
+        action = batch_action_from_dict(self.vectors[0]["action"])
+        cases = [
+            (RequestConnectionError(), QuexErrorCodes.REQUEST_CONNECTION_ERROR),
+            (Response4XXError(404), QuexErrorCodes.RESPONSE_4XX_ERROR),
+            (Response5XXError(500), QuexErrorCodes.RESPONSE_5XX_ERROR),
+            (ResponseNotJSONError(), QuexErrorCodes.RESPONSE_NOT_JSON_ERROR),
+            (RuntimeError("secret"), QuexErrorCodes.INTERNAL_OTHER_ERROR),
+        ]
+        for exc, expected in cases:
+            with self.subTest(error=type(exc).__name__):
+                with patch("quex_backend.batch_routes.get_timestamp", return_value=1700000000):
+                    with patch(
+                        "quex_backend.batch_routes.fetch_all_sources", side_effect=exc
+                    ):
+                        response = self.post_action(action)
+
+                data = response.get_json()
+                self.assertEqual(data["msg"]["data_item"]["error"], expected.value)
+                self.assertEqual(b64decode(data["msg"]["data_item"]["value"]), b"")
 
 
 if __name__ == "__main__":

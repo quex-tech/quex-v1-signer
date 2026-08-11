@@ -39,7 +39,6 @@ from quex_backend.utils import (
     process_json,
 )
 
-
 bp = Blueprint("v1", __name__)
 
 PLUTUS_MAGIC = b"\xd8\x79\x9f"
@@ -129,19 +128,19 @@ def query() -> dict[str, Any]:
         return create_response(msg_cls, qr.action.action_id(), relayer, QuexErrorCodes.ABI_ENCODING_ERROR)
     except GetTimestampError:
         return create_response(msg_cls, qr.action.action_id(), relayer, QuexErrorCodes.INTERNAL_GET_TIMESTAMP_ERROR)
-    except RequestProcessingError as exc:
+    except RequestProcessingError:
+        # Never sign exception text: it can carry a decrypted patch secret into an
+        # on-chain DataItem. The signed value stays empty, as on the batch path.
         return create_response(
             msg_cls,
             qr.action.action_id(),
             relayer,
             QuexErrorCodes.INTERNAL_REQUEST_PROCESSING_ERROR,
-            str(exc).encode(),
         )
-    except Exception as exc:
+    except Exception:
         return create_response(
             msg_cls,
             qr.action.action_id(),
             relayer,
             QuexErrorCodes.INTERNAL_OTHER_ERROR,
-            str(exc).encode(),
         )

@@ -34,6 +34,14 @@ class BatchActionValidationError(Exception):
     pass
 
 
+# A scheme, a host, or a backslash lets the path override the declared host.
+def is_rooted_relative_path(path: str) -> bool:
+    parts = urlsplit(path)
+    if parts.scheme or parts.netloc or "\\" in path:
+        return False
+    return parts.path.startswith("/")
+
+
 # Parallel HTTP requests as one action; jq runs over the array of JSON results.
 @dataclass
 class EthereumBatchHTTPAction(ABIEncodable):
@@ -53,10 +61,7 @@ class EthereumBatchHTTPAction(ABIEncodable):
         if len(self.patches) != len(self.requests):
             raise BatchActionValidationError("patch count does not match request count")
         for request in self.requests:
-            # A scheme, a host, or a backslash lets the path override the declared host.
-            parts = urlsplit(request.path)
-            bad = parts.scheme or parts.netloc or "\\" in request.path
-            if bad or not parts.path.startswith("/"):
+            if not is_rooted_relative_path(request.path):
                 raise BatchActionValidationError("path must be a rooted relative path")
 
     # The domain-tagged preimage keeps batch ids disjoint from v1 action ids.
@@ -103,10 +108,15 @@ def apply_batch_patches(
             key = processor.recover_ephemeral_public_key(action_id, proof)
         except Exception as exc:
             raise EncryptedPatchProcessingError from exc
-    return [
+    patched = [
         processor.apply_patch(request, patch, action_id, proof, key)
         for request, patch in zip(action.requests, action.patches, strict=True)
     ]
+    # Re-check after patching: a decrypted path_suffix must not override the host.
+    for request in patched:
+        if not is_rooted_relative_path(request.path):
+            raise EncryptedPatchProcessingError("patched path is not rooted relative")
+    return patched
 
 
 # Translates raw requests-layer errors so exception text can never reach a signed value.
