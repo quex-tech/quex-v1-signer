@@ -11,6 +11,10 @@ from quex_backend.models import HTTPRequest
 
 c = ntplib.NTPClient()
 
+NTP_HOST = "europe.pool.ntp.org"
+NTP_ATTEMPTS = 3
+NTP_TIMEOUT_SECONDS = 2
+
 
 class RequestConnectionError(Exception):
     pass
@@ -59,11 +63,16 @@ def get_timestamp() -> int:
 
     :return: current NTP timestamp
     """
-    try:
-        response = c.request("europe.pool.ntp.org", version=4)
-        return round(float(response.tx_time))
-    except Exception as exc:
-        raise GetTimestampError from exc
+    # NTP runs over UDP, so a single lost reply must not fail the whole query.
+    # The pool name resolves to a different server on each attempt.
+    last_exc: Exception | None = None
+    for _ in range(NTP_ATTEMPTS):
+        try:
+            response = c.request(NTP_HOST, version=4, timeout=NTP_TIMEOUT_SECONDS)
+            return round(float(response.tx_time))
+        except Exception as exc:
+            last_exc = exc
+    raise GetTimestampError from last_exc
 
 
 def process_json(input_json: dict[str, Any], json_query: str, schema: str, encode: Callable[[list[str], list[Any]], bytes]) -> bytes:

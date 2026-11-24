@@ -1,6 +1,8 @@
 import unittest
+from unittest import mock
 
 import eth_abi
+import ntplib
 import pytest
 
 from quex_backend.plutus.abi import encoder as plutus_abi_encoder
@@ -133,6 +135,18 @@ class TestUtils(unittest.TestCase):
         actual_encoded = process_json(input_json, json_query, schema, plutus_abi_encoder.encode)
 
         assert actual_encoded == expected_encoded
+
+    def test_get_timestamp_retries_after_lost_ntp_reply(self):
+        reply = mock.Mock(tx_time=1700000000.4)
+        with mock.patch("quex_backend.utils.c.request", side_effect=[ntplib.NTPException("lost"), reply]) as request:
+            assert get_timestamp() == 1700000000
+        assert request.call_count == 2
+
+    def test_get_timestamp_fails_when_every_attempt_fails(self):
+        with mock.patch("quex_backend.utils.c.request", side_effect=ntplib.NTPException("lost")) as request:
+            with pytest.raises(GetTimestampError):
+                get_timestamp()
+        assert request.call_count == NTP_ATTEMPTS
 
 
 if __name__ == '__main__':
